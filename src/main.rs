@@ -1,18 +1,42 @@
-use clap::Parser;
+use clap::{Parser, Subcommand};
 use std::io::BufReader;
 
 #[derive(Debug, Parser)]
+#[command(name = "mp3player")]
 #[command(about = "mp3 player", long_about = None, version = "0.1.0")]
-struct Args {
-    #[arg(long, short)]
-    file: String
+struct Cli {
+    #[command(subcommand)]
+    command: SubCommands
+}
+
+#[derive(Debug, Subcommand)]
+enum SubCommands {
+    #[command(arg_required_else_help = true)]
+    Play {
+        file: String
+    },
+    Stop {
+
+    }
 }
 
 fn main() {
-    let args = Args::parse();
+    let args = Cli::parse();
     println!("args -> {args:?}");
 
-    let f = match std::fs::File::open(args.file) {
+    match args.command {
+        SubCommands::Play { file } => {
+            println!("play {file}");
+            play(file);
+        },
+        SubCommands::Stop {} => {
+            println!("stop");
+        }
+    }
+}
+
+fn play(file: String) {
+    let f = match std::fs::File::open(file) {
         Ok(f) => f,
         Err(error) => {
             println!("error -> {error:?}");
