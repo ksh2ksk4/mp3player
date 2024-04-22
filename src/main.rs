@@ -1,15 +1,16 @@
 use clap::Parser;
 use std::io::BufReader;
 
-#[derive(Parser, Debug)]
-#[command(version, about, long_about = None)]
+#[derive(Debug, Parser)]
+#[command(about = "mp3 player", long_about = None, version = "0.1.0")]
 struct Args {
-    #[arg(short, long)]
+    #[arg(long, short)]
     file: String
 }
 
 fn main() {
     let args = Args::parse();
+    println!("args -> {args:?}");
 
     let f = match std::fs::File::open(args.file) {
         Ok(f) => f,
