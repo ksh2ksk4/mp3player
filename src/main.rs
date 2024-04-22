@@ -14,7 +14,7 @@ fn main() {
     let f = match std::fs::File::open(args.file) {
         Ok(f) => f,
         Err(error) => {
-            println!("error -> {:?}", error);
+            println!("error -> {error:?}");
             panic!("{}", error.to_string());
         }
     };
