@@ -12,7 +12,10 @@ struct Cli {
 #[derive(Debug, Subcommand)]
 enum SubCommands {
     #[command(arg_required_else_help = true)]
+    /// Play the specified file
     Play {
+        /// File to play
+        #[arg(required = true)]
         file: String
     },
     Stop {
