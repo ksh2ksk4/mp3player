@@ -1,4 +1,6 @@
 use clap::{Parser, Subcommand};
+use rodio::Source;
+use std::fs::File;
 use std::io::BufReader;
 
 #[derive(Debug, Parser)]
@@ -14,9 +16,9 @@ enum SubCommands {
     /// Play the specified file
     #[command(arg_required_else_help = true)]
     Play {
-        /// File to play
+        /// Files to play
         #[arg(required = true)]
-        file: String
+        files: Vec<String>
     },
     Stop {
 
@@ -28,9 +30,11 @@ fn main() {
     println!("args -> {args:?}");
 
     match args.command {
-        SubCommands::Play { file } => {
-            println!("play {file}");
-            play(file);
+        SubCommands::Play {
+            files
+        } => {
+            println!("files -> {files:?}");
+            play(files);
         },
         SubCommands::Stop {} => {
             println!("stop");
@@ -38,18 +42,24 @@ fn main() {
     }
 }
 
-fn play(file: String) {
-    let f = match std::fs::File::open(file) {
-        Ok(f) => f,
-        Err(error) => {
-            println!("error -> {error:?}");
-            panic!("{}", error.to_string());
-        }
-    };
-
+fn play(files: Vec<String>) {
     let (_stream, stream_handle) = rodio::OutputStream::try_default().unwrap();
-    let sink = rodio::Sink::try_new(&stream_handle).unwrap();
 
-    sink.append(rodio::Decoder::new(BufReader::new(f)).unwrap());
-    sink.sleep_until_end();
+    for file in &files {
+        match File::open(file) {
+            Ok(f) => {
+                let _ = stream_handle.play_raw(
+                    rodio::Decoder::new(
+                        BufReader::new(f)
+                    ).unwrap().convert_samples()
+                );
+            },
+            Err(error) => {
+                println!("error -> {error:?}");
+                panic!("{}", error.to_string());
+            }
+        };
+    }
+
+    std::thread::sleep(std::time::Duration::from_secs(10));
 }
