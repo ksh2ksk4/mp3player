@@ -17,7 +17,10 @@ enum SubCommands {
     Play {
         /// Files to play
         #[arg(required = true)]
-        files: Vec<String>
+        files: Vec<String>,
+        /// Volume of the sound
+        #[arg(long, short, value_name = "n")]
+        volume: Option<f32>
     },
     Stop {
 
@@ -30,10 +33,11 @@ fn main() {
 
     match args.command {
         SubCommands::Play {
-            files
+            files,
+            volume
         } => {
-            println!("files -> {files:?}");
-            play(files);
+            println!("files -> {files:?}, volume -> {volume:?}");
+            play(files, volume);
         },
         SubCommands::Stop {} => {
             println!("stop");
@@ -41,7 +45,7 @@ fn main() {
     }
 }
 
-fn play(files: Vec<String>) {
+fn play(files: Vec<String>, volume: Option<f32>) {
     let (_stream, stream_handle) = rodio::OutputStream::try_default().unwrap();
 
     let mut sinks = Vec::new();
@@ -50,7 +54,7 @@ fn play(files: Vec<String>) {
         match File::open(file) {
             Ok(f) => {
                 let sink = rodio::Sink::try_new(&stream_handle).unwrap();
-                sink.set_volume(0.2);
+                sink.set_volume(volume.unwrap_or(1.0));
                 sink.append(rodio::Decoder::new(BufReader::new(f)).unwrap());
                 let length = sink.len();
                 println!("len() -> {length:?}");
