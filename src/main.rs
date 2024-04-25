@@ -1,5 +1,4 @@
 use clap::{Parser, Subcommand};
-use rodio::Source;
 use std::fs::File;
 use std::io::BufReader;
 
@@ -45,14 +44,17 @@ fn main() {
 fn play(files: Vec<String>) {
     let (_stream, stream_handle) = rodio::OutputStream::try_default().unwrap();
 
+    let mut sinks = Vec::new();
+
     for file in &files {
         match File::open(file) {
             Ok(f) => {
-                let _ = stream_handle.play_raw(
-                    rodio::Decoder::new(
-                        BufReader::new(f)
-                    ).unwrap().convert_samples()
-                );
+                let sink = rodio::Sink::try_new(&stream_handle).unwrap();
+                sink.set_volume(0.2);
+                sink.append(rodio::Decoder::new(BufReader::new(f)).unwrap());
+                let length = sink.len();
+                println!("len() -> {length:?}");
+                sinks.push(sink);
             },
             Err(error) => {
                 println!("error -> {error:?}");
@@ -61,5 +63,5 @@ fn play(files: Vec<String>) {
         };
     }
 
-    std::thread::sleep(std::time::Duration::from_secs(10));
+    sinks[0].sleep_until_end();
 }
