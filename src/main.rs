@@ -9,7 +9,7 @@ use std::time::Duration;
 #[command(about = "mp3 player", long_about = None, version = "0.1.0")]
 struct Cli {
     #[command(subcommand)]
-    command: SubCommands
+    sub_command: SubCommands
 }
 
 #[derive(Debug, Subcommand)]
@@ -39,7 +39,7 @@ fn main() {
     let args = Cli::parse();
     println!("args -> {args:?}");
 
-    match args.command {
+    match args.sub_command {
         SubCommands::Play {
             files,
             skip,
