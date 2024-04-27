@@ -2,6 +2,7 @@ use clap::{Parser, Subcommand};
 use rodio::Source;
 use std::fs::File;
 use std::io::BufReader;
+use std::time::Duration;
 
 #[derive(Debug, Parser)]
 #[command(name = "mp3player")]
@@ -60,7 +61,10 @@ fn play(files: Vec<String>, volume: Option<f32>) {
                 let decoder = rodio::Decoder::new(BufReader::new(f)).unwrap();
                 let total_duration = decoder.total_duration();
                 println!("total_duration -> {total_duration:?}");
-                sink.append(decoder.skip_duration(std::time::Duration::from_secs(45)));
+                sink.append(
+                    decoder.skip_duration(Duration::from_secs(45))
+                        .take_duration(Duration::from_secs(10))
+                );
 
                 let length = sink.len();
                 println!("len() -> {length:?}");
