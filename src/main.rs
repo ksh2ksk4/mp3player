@@ -20,6 +20,12 @@ enum SubCommands {
         /// Files to play
         #[arg(required = true)]
         files: Vec<String>,
+        /// Skip duration
+        #[arg(long, short, value_name = "s")]
+        skip: Option<u64>,
+        /// Take duration
+        #[arg(long, short, value_name = "s")]
+        take: Option<u64>,
         /// Volume of the sound
         #[arg(long, short, value_name = "n")]
         volume: Option<f32>
@@ -36,10 +42,12 @@ fn main() {
     match args.command {
         SubCommands::Play {
             files,
+            skip,
+            take,
             volume
         } => {
             println!("files -> {files:?}, volume -> {volume:?}");
-            play(files, volume);
+            play(files, skip, take, volume);
         },
         SubCommands::Stop {} => {
             println!("stop");
@@ -47,7 +55,7 @@ fn main() {
     }
 }
 
-fn play(files: Vec<String>, volume: Option<f32>) {
+fn play(files: Vec<String>, skip: Option<u64>, take: Option<u64>, volume: Option<f32>) {
     let (_stream, stream_handle) = rodio::OutputStream::try_default().unwrap();
 
     let mut sinks = Vec::new();
@@ -62,8 +70,9 @@ fn play(files: Vec<String>, volume: Option<f32>) {
                 let total_duration = decoder.total_duration();
                 println!("total_duration -> {total_duration:?}");
                 sink.append(
-                    decoder.skip_duration(Duration::from_secs(45))
-                        .take_duration(Duration::from_secs(10))
+                    decoder.skip_duration(Duration::from_secs(skip.unwrap_or(0)))
+                        //todo デフォルトをtotal_durationの値にしたい
+                        .take_duration(Duration::from_secs(take.unwrap_or(30)))
                 );
 
                 let length = sink.len();
