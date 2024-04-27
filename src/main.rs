@@ -21,11 +21,11 @@ enum SubCommands {
         #[arg(required = true)]
         files: Vec<String>,
         /// Skip duration
-        #[arg(long, short, value_name = "s")]
-        skip: Option<u64>,
+        #[arg(long, short, value_delimiter = ',', value_name = "s")]
+        skip: Option<Vec<u64>>,
         /// Take duration
-        #[arg(long, short, value_name = "s")]
-        take: Option<u64>,
+        #[arg(long, short, value_delimiter = ',', value_name = "s")]
+        take: Option<Vec<u64>>,
         /// Volume of the sound
         #[arg(long, short, value_name = "n")]
         volume: Option<f32>
@@ -55,10 +55,16 @@ fn main() {
     }
 }
 
-fn play(files: Vec<String>, skip: Option<u64>, take: Option<u64>, volume: Option<f32>) {
+fn play(files: Vec<String>, skip: Option<Vec<u64>>, take: Option<Vec<u64>>, volume: Option<f32>) {
     let (_stream, stream_handle) = rodio::OutputStream::try_default().unwrap();
-
     let mut sinks = Vec::new();
+
+    println!("skip -> {skip:?}, take -> {take:?}");
+    let skips = skip.unwrap_or([].to_vec());
+    //todo デフォルトをtotal_durationの値にしたい
+    let takes = take.unwrap_or([].to_vec());
+
+    let mut i = 0;
 
     for file in &files {
         match File::open(file) {
@@ -69,11 +75,12 @@ fn play(files: Vec<String>, skip: Option<u64>, take: Option<u64>, volume: Option
                 let decoder = rodio::Decoder::new(BufReader::new(f)).unwrap();
                 let total_duration = decoder.total_duration();
                 println!("total_duration -> {total_duration:?}");
+
                 sink.append(
-                    decoder.skip_duration(Duration::from_secs(skip.unwrap_or(0)))
-                        //todo デフォルトをtotal_durationの値にしたい
-                        .take_duration(Duration::from_secs(take.unwrap_or(30)))
+                    decoder.skip_duration(Duration::from_secs(skips[i]))
+                        .take_duration(Duration::from_secs(takes[i]))
                 );
+                i += 1;
 
                 let length = sink.len();
                 println!("len() -> {length:?}");
@@ -87,5 +94,6 @@ fn play(files: Vec<String>, skip: Option<u64>, take: Option<u64>, volume: Option
         };
     }
 
+    // 最初のトラックの再生が完了するまで待つ
     sinks[0].sleep_until_end();
 }
