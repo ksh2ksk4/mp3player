@@ -61,7 +61,6 @@ fn play(files: Vec<String>, skip: Option<Vec<u64>>, take: Option<Vec<u64>>, volu
 
     println!("skip -> {skip:?}, take -> {take:?}");
     let skips = skip.unwrap_or(vec![]);
-    //todo デフォルトをtotal_durationの値にしたい
     let takes = take.unwrap_or(vec![]);
 
     let mut i = 0;
@@ -73,12 +72,19 @@ fn play(files: Vec<String>, skip: Option<Vec<u64>>, take: Option<Vec<u64>>, volu
                 sink.set_volume(volume.unwrap_or(1.0));
 
                 let decoder = rodio::Decoder::new(BufReader::new(f)).unwrap();
-                let total_duration = decoder.total_duration();
+                // 0.18.0 から値が取得できるようになっている
+                let total_duration = decoder.total_duration().unwrap_or(Duration::from_secs(0));
                 println!("total_duration -> {total_duration:?}");
 
                 sink.append(
                     decoder.skip_duration(Duration::from_secs(skips[i]))
-                        .take_duration(Duration::from_secs(takes[i]))
+                        .take_duration(
+                            if takes.is_empty() {
+                                total_duration
+                            } else {
+                                Duration::from_secs(takes[i])
+                            }
+                        )
                 );
                 i += 1;
 
