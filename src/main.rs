@@ -57,12 +57,12 @@ fn main() {
 
 fn play(files: Vec<String>, skip: Option<Vec<u64>>, take: Option<Vec<u64>>, volume: Option<f32>) {
     let (_stream, stream_handle) = rodio::OutputStream::try_default().unwrap();
-    let mut sinks = Vec::new();
+    let mut sinks = vec![];
 
     println!("skip -> {skip:?}, take -> {take:?}");
-    let skips = skip.unwrap_or([].to_vec());
+    let skips = skip.unwrap_or(vec![]);
     //todo デフォルトをtotal_durationの値にしたい
-    let takes = take.unwrap_or([].to_vec());
+    let takes = take.unwrap_or(vec![]);
 
     let mut i = 0;
 
