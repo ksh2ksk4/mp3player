@@ -20,6 +20,9 @@ enum SubCommands {
         /// Files to play
         #[arg(required = true)]
         files: Vec<String>,
+        /// Seek to position
+        #[arg(long, short, value_delimiter = ',', value_name = "s")]
+        position: Option<Vec<u64>>,
         /// Skip duration
         #[arg(long, short, value_delimiter = ',', value_name = "s")]
         skip: Option<Vec<u64>>,
@@ -42,12 +45,13 @@ fn main() {
     match args.sub_command {
         SubCommands::Play {
             files,
+            position,
             skip,
             take,
             volume
         } => {
             println!("files -> {files:?}, volume -> {volume:?}");
-            play(files, skip, take, volume);
+            play(files, position, skip, take, volume);
         },
         SubCommands::Stop {} => {
             println!("stop");
@@ -55,11 +59,12 @@ fn main() {
     }
 }
 
-fn play(files: Vec<String>, skip: Option<Vec<u64>>, take: Option<Vec<u64>>, volume: Option<f32>) {
+fn play(files: Vec<String>, position: Option<Vec<u64>>, skip: Option<Vec<u64>>, take: Option<Vec<u64>>, volume: Option<f32>) {
     let (_stream, stream_handle) = rodio::OutputStream::try_default().unwrap();
     let mut sinks = vec![];
 
-    println!("skip -> {skip:?}, take -> {take:?}");
+    println!("position -> {position:?}, skip -> {skip:?}, take -> {take:?}");
+    let positions = position.unwrap_or(vec![]);
     let skips = skip.unwrap_or(vec![]);
     let takes = take.unwrap_or(vec![]);
 
@@ -71,10 +76,13 @@ fn play(files: Vec<String>, skip: Option<Vec<u64>>, take: Option<Vec<u64>>, volu
                 let sink = rodio::Sink::try_new(&stream_handle).unwrap();
                 sink.set_volume(volume.unwrap_or(1.0));
 
-                let decoder = rodio::Decoder::new(BufReader::new(f)).unwrap();
+                let mut decoder = rodio::Decoder::new(BufReader::new(f)).unwrap();
                 // 0.18.0 から値が取得できるようになっている
                 let total_duration = decoder.total_duration().unwrap_or(Duration::from_secs(0));
                 println!("total_duration -> {total_duration:?}");
+
+                let rv = decoder.try_seek(Duration::from_secs(positions[i])).unwrap();
+                println!("rv -> {rv:?}");
 
                 sink.append(
                     decoder.skip_duration(Duration::from_secs(skips[i]))
