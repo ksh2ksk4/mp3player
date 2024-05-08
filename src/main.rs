@@ -85,7 +85,9 @@ fn play(files: Vec<String>, position: Option<Vec<u64>>, skip: Option<Vec<u64>>, 
                 println!("rv -> {rv:?}");
 
                 sink.append(
-                    decoder.skip_duration(Duration::from_secs(skips[i]))
+                    decoder.skip_duration(
+                            Duration::from_secs(if skips.is_empty() { 0 } else { skips[i] })
+                        )
                         .take_duration(
                             if takes.is_empty() {
                                 total_duration
