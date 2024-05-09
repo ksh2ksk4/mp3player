@@ -9,7 +9,7 @@ use std::time::Duration;
 #[command(about = "mp3 player", long_about = None, version = "0.1.0")]
 struct Cli {
     #[command(subcommand)]
-    sub_command: SubCommands
+    sub_command: SubCommands,
 }
 
 #[derive(Debug, Subcommand)]
@@ -34,11 +34,9 @@ enum SubCommands {
         take: Option<Vec<u64>>,
         /// Volume of the sound
         #[arg(long, short, value_name = "n")]
-        volume: Option<f32>
+        volume: Option<f32>,
     },
-    Stop {
-
-    }
+    Stop {},
 }
 
 fn main() {
@@ -52,18 +50,25 @@ fn main() {
             repeat,
             skip,
             take,
-            volume
+            volume,
         } => {
             println!("files -> {files:?}, volume -> {volume:?}");
             play(files, position, repeat, skip, take, volume);
-        },
+        }
         SubCommands::Stop {} => {
             println!("stop");
         }
     }
 }
 
-fn play(files: Vec<String>, position: Option<Vec<u64>>, repeat: bool, skip: Option<Vec<u64>>, take: Option<Vec<u64>>, volume: Option<f32>) {
+fn play(
+    files: Vec<String>,
+    position: Option<Vec<u64>>,
+    repeat: bool,
+    skip: Option<Vec<u64>>,
+    take: Option<Vec<u64>>,
+    volume: Option<f32>,
+) {
     let (_stream, stream_handle) = rodio::OutputStream::try_default().unwrap();
     let mut sinks = vec![];
 
@@ -91,30 +96,32 @@ fn play(files: Vec<String>, position: Option<Vec<u64>>, repeat: bool, skip: Opti
                 //todo これをもっと簡潔に
                 if repeat {
                     sink.append(
-                        decoder.skip_duration(
-                                Duration::from_secs(if skips.is_empty() { 0 } else { skips[i] })
-                            )
-                            .take_duration(
-                                if takes.is_empty() {
-                                    total_duration
-                                } else {
-                                    Duration::from_secs(takes[i])
-                                }
-                            )
-                            .repeat_infinite()
+                        decoder
+                            .skip_duration(Duration::from_secs(if skips.is_empty() {
+                                0
+                            } else {
+                                skips[i]
+                            }))
+                            .take_duration(if takes.is_empty() {
+                                total_duration
+                            } else {
+                                Duration::from_secs(takes[i])
+                            })
+                            .repeat_infinite(),
                     );
                 } else {
                     sink.append(
-                        decoder.skip_duration(
-                                Duration::from_secs(if skips.is_empty() { 0 } else { skips[i] })
-                            )
-                            .take_duration(
-                                if takes.is_empty() {
-                                    total_duration
-                                } else {
-                                    Duration::from_secs(takes[i])
-                                }
-                            )
+                        decoder
+                            .skip_duration(Duration::from_secs(if skips.is_empty() {
+                                0
+                            } else {
+                                skips[i]
+                            }))
+                            .take_duration(if takes.is_empty() {
+                                total_duration
+                            } else {
+                                Duration::from_secs(takes[i])
+                            }),
                     );
                 }
 
@@ -124,7 +131,7 @@ fn play(files: Vec<String>, position: Option<Vec<u64>>, repeat: bool, skip: Opti
                 println!("len() -> {length:?}");
 
                 sinks.push(sink);
-            },
+            }
             Err(error) => {
                 println!("error -> {error:?}");
                 panic!("{}", error.to_string());
