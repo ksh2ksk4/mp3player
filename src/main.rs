@@ -73,9 +73,9 @@ fn play(
     let mut sinks = vec![];
 
     println!("position -> {position:?}, repeat -> {repeat:?}, skip -> {skip:?}, take -> {take:?}");
-    let positions = position.unwrap_or(vec![]);
-    let skips = skip.unwrap_or(vec![]);
-    let takes = take.unwrap_or(vec![]);
+    let positions = position.unwrap_or_default();
+    let skips = skip.unwrap_or_default();
+    let takes = take.unwrap_or_default();
 
     let mut i = 0;
 
@@ -90,8 +90,7 @@ fn play(
                 let total_duration = decoder.total_duration().unwrap_or(Duration::from_secs(0));
                 println!("total_duration -> {total_duration:?}");
 
-                let rv = decoder.try_seek(Duration::from_secs(positions[i])).unwrap();
-                println!("rv -> {rv:?}");
+                decoder.try_seek(Duration::from_secs(positions[i])).unwrap();
 
                 //todo これをもっと簡潔に
                 if repeat {
