@@ -121,7 +121,7 @@ fn play(
                 println!("error -> {error:?}");
                 panic!("{}", error.to_string());
             }
-        };
+        }
     }
 
     // 最初のトラックの再生が完了するまで待つ
