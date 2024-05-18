@@ -92,36 +92,22 @@ fn play(
 
                 decoder.try_seek(Duration::from_secs(positions[i])).unwrap();
 
-                //todo これをもっと簡潔に
+                let tmp = decoder
+                    .skip_duration(Duration::from_secs(if skips.is_empty() {
+                        0
+                    } else {
+                        skips[i]
+                    }))
+                    .take_duration(if takes.is_empty() {
+                        total_duration
+                    } else {
+                        Duration::from_secs(takes[i])
+                    });
+
                 if repeat {
-                    sink.append(
-                        decoder
-                            .skip_duration(Duration::from_secs(if skips.is_empty() {
-                                0
-                            } else {
-                                skips[i]
-                            }))
-                            .take_duration(if takes.is_empty() {
-                                total_duration
-                            } else {
-                                Duration::from_secs(takes[i])
-                            })
-                            .repeat_infinite(),
-                    );
+                    sink.append(tmp.repeat_infinite());
                 } else {
-                    sink.append(
-                        decoder
-                            .skip_duration(Duration::from_secs(if skips.is_empty() {
-                                0
-                            } else {
-                                skips[i]
-                            }))
-                            .take_duration(if takes.is_empty() {
-                                total_duration
-                            } else {
-                                Duration::from_secs(takes[i])
-                            }),
-                    );
+                    sink.append(tmp);
                 }
 
                 i += 1;
