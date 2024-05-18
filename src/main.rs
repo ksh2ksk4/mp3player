@@ -1,7 +1,8 @@
 use clap::{Parser, Subcommand};
 use rodio::Source;
+use serde_json::Value;
 use std::fs::File;
-use std::io::BufReader;
+use std::io::{BufReader, Read};
 use std::time::Duration;
 
 #[derive(Debug, Parser)]
@@ -20,6 +21,9 @@ enum SubCommands {
         /// Files to play
         #[arg(required = true)]
         files: Vec<String>,
+        /// Playlist file
+        #[arg(long, value_name = "filename")]
+        playlist: Option<String>,
         /// Seek to position
         #[arg(long, short, value_delimiter = ',', value_name = "s")]
         position: Option<Vec<u64>>,
@@ -46,6 +50,7 @@ fn main() {
     match args.sub_command {
         SubCommands::Play {
             files,
+            playlist,
             position,
             repeat,
             skip,
@@ -53,7 +58,7 @@ fn main() {
             volume,
         } => {
             println!("files -> {files:?}, volume -> {volume:?}");
-            play(files, position, repeat, skip, take, volume);
+            play(files, playlist, position, repeat, skip, take, volume);
         }
         SubCommands::Stop {} => {
             println!("stop");
@@ -62,7 +67,8 @@ fn main() {
 }
 
 fn play(
-    files: Vec<String>,
+    mut files: Vec<String>,
+    playlist: Option<String>,
     position: Option<Vec<u64>>,
     repeat: bool,
     skip: Option<Vec<u64>>,
@@ -72,12 +78,33 @@ fn play(
     let (_stream, stream_handle) = rodio::OutputStream::try_default().unwrap();
     let mut sinks = vec![];
 
-    println!("position -> {position:?}, repeat -> {repeat:?}, skip -> {skip:?}, take -> {take:?}");
-    let positions = position.unwrap_or_default();
+    println!("playlist -> {playlist:?}, position -> {position:?}, repeat -> {repeat:?}, skip -> {skip:?}, take -> {take:?}");
+    let playlist = playlist.unwrap_or_default();
+    let mut positions = position.unwrap_or_default();
     let skips = skip.unwrap_or_default();
     let takes = take.unwrap_or_default();
 
     let mut i = 0;
+
+    let mut files2: Vec<String> = vec![];
+    let mut positions2: Vec<u64> = vec![];
+
+    match read_json_data(playlist) {
+        Ok(json) => {
+            println!("json -> {json:?}");
+            parse_json_data("", json, &mut files2, &mut positions2);
+            println!("files2 -> {files2:?}, positions2 -> {positions2:?}");
+        }
+        Err(e) => {
+            println!("e -> {e:?}");
+            panic!("{}", e.to_string());
+        }
+    }
+
+    if !files2.is_empty() {
+        files = files2;
+        positions = positions2;
+    }
 
     for file in &files {
         match File::open(file) {
@@ -126,4 +153,69 @@ fn play(
 
     // 最初のトラックの再生が完了するまで待つ
     sinks[0].sleep_until_end();
+}
+
+fn read_json_data(playlist: String) -> Result<Value, serde_json::Error> {
+    match File::open(playlist) {
+        Ok(mut f) => {
+            let mut contents = String::new();
+
+            f.read_to_string(&mut contents).unwrap();
+            serde_json::from_str::<Value>(&contents)
+        }
+        Err(e) => {
+            println!("e -> {e:?}");
+            panic!("{}", e.to_string());
+        }
+    }
+}
+
+fn parse_json_data(key: &str, value: Value, files: &mut Vec<String>, positions: &mut Vec<u64>) {
+    match value {
+        Value::Array(a) => {
+            println!("key -> {key:?}, a -> {a:?}");
+
+            for v in a {
+                parse_json_data("0", v, files, positions);
+            }
+        }
+        Value::Bool(b) => {
+            println!("key -> {key:?}, b -> {b:?}");
+        }
+        Value::Null => {}
+        Value::Number(n) => {
+            println!("key -> {key:?}, n -> {n:?}");
+
+            match key {
+                "position" => {
+                    positions.push(n.as_u64().unwrap_or(0));
+                }
+                "skip" => {
+
+                }
+                "take" => {
+
+                }
+                _ => {}
+            }
+        }
+        Value::Object(o) => {
+            println!("key -> {key:?}, o -> {o:?}");
+
+            for (k, v) in o {
+                parse_json_data(k.as_str(), v, files, positions);
+            }
+        }
+        Value::String(s) => {
+            println!("key -> {key:?}, s -> {s:?}");
+
+            match key {
+                "file" => {
+                    files.push(s);
+                }
+                "dummy" => {}
+                _ => {}
+            }
+        }
+    }
 }

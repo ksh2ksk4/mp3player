@@ -1,0 +1,17 @@
+{
+  "playlist": [
+    {
+      "file": "assets/MusMus-BGM-136.mp3",
+      "position": 140
+    },
+    {
+      "file": "assets/MusMus-BGM-162.mp3",
+      "position": 150
+    },
+    {
+      "file": "assets/MusMus-BGM-175.mp3",
+      "position": 190
+    }
+  ],
+  "volume": 0.1
+}
