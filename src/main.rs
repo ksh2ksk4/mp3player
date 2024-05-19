@@ -1,3 +1,7 @@
+//! # Summary
+//!
+//! mp3ファイルを再生するアプリ。
+
 use clap::{Parser, Subcommand};
 use rodio::Source;
 use serde_json::Value;
@@ -43,6 +47,9 @@ enum SubCommands {
     Stop {},
 }
 
+/// # Summary
+///
+/// エントリポイント
 fn main() {
     let args = Cli::parse();
     println!("args -> {args:?}");
@@ -66,6 +73,19 @@ fn main() {
     }
 }
 
+/// # Summary
+///
+/// 指定したファイルを再生する
+///
+/// # Arguments
+///
+/// - `files`: 再生対象ファイル
+/// - `playlist`: プレイリストファイル
+/// - `position`: シーク位置(秒)
+/// - `repeat`: リピート再生するかどうか
+/// - `skip`: スキップ時間(秒)
+/// - `take`: 再生時間(秒)
+/// - `volume`: ボリューム(1 を 100% とした数値)
 fn play(
     mut files: Vec<String>,
     playlist: Option<String>,
@@ -158,6 +178,13 @@ fn play(
     sinks[0].sleep_until_end();
 }
 
+/// # Summary
+///
+/// ファイルから JSON データを読み込み、その JSON データを返す
+///
+/// # Arguments
+///
+/// - `file`: JSON ファイル
 fn read_json_data(file: String) -> Result<Value, serde_json::Error> {
     match File::open(file) {
         Ok(mut f) => {
@@ -173,6 +200,20 @@ fn read_json_data(file: String) -> Result<Value, serde_json::Error> {
     }
 }
 
+/// # Summary
+///
+/// プレイリストの JSON データを再帰的にパースして、その結果を各変数に設定する
+///
+/// # Arguments
+///
+/// - `key`: JSON データのキー
+/// - `value`: JSON データのバリュー
+///
+/// 以降の引数はパースした結果
+///
+/// - `files`: 再生対象ファイル
+/// - `positions`: シーク位置(秒)
+/// - `volume`: ボリューム(1 を 100% とした数値)
 fn parse_json_data(
     key: &str,
     value: Value,
