@@ -88,11 +88,13 @@ fn play(
 
     let mut files2: Vec<String> = vec![];
     let mut positions2: Vec<u64> = vec![];
+    let mut volume2 = 1.0;
+    let mut volume3 = volume.unwrap_or(1.0);
 
     match read_json_data(playlist) {
         Ok(json) => {
             println!("json -> {json:?}");
-            parse_json_data("", json, &mut files2, &mut positions2);
+            parse_json_data("", json, &mut files2, &mut positions2, &mut volume2);
             println!("files2 -> {files2:?}, positions2 -> {positions2:?}");
         }
         Err(e) => {
@@ -104,13 +106,14 @@ fn play(
     if !files2.is_empty() {
         files = files2;
         positions = positions2;
+        volume3 = volume2;
     }
 
     for file in &files {
         match File::open(file) {
             Ok(f) => {
                 let sink = rodio::Sink::try_new(&stream_handle).unwrap();
-                sink.set_volume(volume.unwrap_or(1.0) as f32);
+                sink.set_volume(volume3 as f32);
 
                 let mut decoder = rodio::Decoder::new(BufReader::new(f)).unwrap();
                 // 0.18.0 から値が取得できるようになっている
@@ -170,13 +173,13 @@ fn read_json_data(playlist: String) -> Result<Value, serde_json::Error> {
     }
 }
 
-fn parse_json_data(key: &str, value: Value, files: &mut Vec<String>, positions: &mut Vec<u64>) {
+fn parse_json_data(key: &str, value: Value, files: &mut Vec<String>, positions: &mut Vec<u64>, volume: &mut f64) {
     match value {
         Value::Array(a) => {
             println!("key -> {key:?}, a -> {a:?}");
 
             for v in a {
-                parse_json_data("0", v, files, positions);
+                parse_json_data("0", v, files, positions, volume);
             }
         }
         Value::Bool(b) => {
@@ -196,6 +199,9 @@ fn parse_json_data(key: &str, value: Value, files: &mut Vec<String>, positions: 
                 "take" => {
 
                 }
+                "volume" => {
+                    *volume = n.as_f64().unwrap_or(1.0);
+                }
                 _ => {}
             }
         }
@@ -203,7 +209,7 @@ fn parse_json_data(key: &str, value: Value, files: &mut Vec<String>, positions: 
             println!("key -> {key:?}, o -> {o:?}");
 
             for (k, v) in o {
-                parse_json_data(k.as_str(), v, files, positions);
+                parse_json_data(k.as_str(), v, files, positions, volume);
             }
         }
         Value::String(s) => {
