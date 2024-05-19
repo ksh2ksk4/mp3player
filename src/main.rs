@@ -158,8 +158,8 @@ fn play(
     sinks[0].sleep_until_end();
 }
 
-fn read_json_data(playlist: String) -> Result<Value, serde_json::Error> {
-    match File::open(playlist) {
+fn read_json_data(file: String) -> Result<Value, serde_json::Error> {
+    match File::open(file) {
         Ok(mut f) => {
             let mut contents = String::new();
 
@@ -180,21 +180,17 @@ fn parse_json_data(
     positions: &mut Vec<u64>,
     volume: &mut f64,
 ) {
+    println!("key -> {key:?}, value -> {value:?}");
+
     match value {
         Value::Array(a) => {
-            println!("key -> {key:?}, a -> {a:?}");
-
             for v in a {
                 parse_json_data("0", v, files, positions, volume);
             }
         }
-        Value::Bool(b) => {
-            println!("key -> {key:?}, b -> {b:?}");
-        }
+        Value::Bool(b) => {}
         Value::Null => {}
         Value::Number(n) => {
-            println!("key -> {key:?}, n -> {n:?}");
-
             match key {
                 "position" => {
                     positions.push(n.as_u64().unwrap_or(0));
@@ -208,15 +204,11 @@ fn parse_json_data(
             }
         }
         Value::Object(o) => {
-            println!("key -> {key:?}, o -> {o:?}");
-
             for (k, v) in o {
                 parse_json_data(k.as_str(), v, files, positions, volume);
             }
         }
         Value::String(s) => {
-            println!("key -> {key:?}, s -> {s:?}");
-
             match key {
                 "file" => {
                     files.push(s);
