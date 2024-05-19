@@ -38,7 +38,7 @@ enum SubCommands {
         take: Option<Vec<u64>>,
         /// Volume of the sound
         #[arg(long, short, value_name = "n")]
-        volume: Option<f32>,
+        volume: Option<f64>,
     },
     Stop {},
 }
@@ -73,7 +73,7 @@ fn play(
     repeat: bool,
     skip: Option<Vec<u64>>,
     take: Option<Vec<u64>>,
-    volume: Option<f32>,
+    volume: Option<f64>,
 ) {
     let (_stream, stream_handle) = rodio::OutputStream::try_default().unwrap();
     let mut sinks = vec![];
@@ -110,7 +110,7 @@ fn play(
         match File::open(file) {
             Ok(f) => {
                 let sink = rodio::Sink::try_new(&stream_handle).unwrap();
-                sink.set_volume(volume.unwrap_or(1.0));
+                sink.set_volume(volume.unwrap_or(1.0) as f32);
 
                 let mut decoder = rodio::Decoder::new(BufReader::new(f)).unwrap();
                 // 0.18.0 から値が取得できるようになっている
