@@ -173,7 +173,13 @@ fn read_json_data(playlist: String) -> Result<Value, serde_json::Error> {
     }
 }
 
-fn parse_json_data(key: &str, value: Value, files: &mut Vec<String>, positions: &mut Vec<u64>, volume: &mut f64) {
+fn parse_json_data(
+    key: &str,
+    value: Value,
+    files: &mut Vec<String>,
+    positions: &mut Vec<u64>,
+    volume: &mut f64,
+) {
     match value {
         Value::Array(a) => {
             println!("key -> {key:?}, a -> {a:?}");
@@ -193,12 +199,8 @@ fn parse_json_data(key: &str, value: Value, files: &mut Vec<String>, positions: 
                 "position" => {
                     positions.push(n.as_u64().unwrap_or(0));
                 }
-                "skip" => {
-
-                }
-                "take" => {
-
-                }
+                "skip" => {}
+                "take" => {}
                 "volume" => {
                     *volume = n.as_f64().unwrap_or(1.0);
                 }
