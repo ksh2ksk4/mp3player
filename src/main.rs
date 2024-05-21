@@ -23,11 +23,8 @@ enum SubCommands {
     #[command(arg_required_else_help = true)]
     Play {
         /// Files to play
-        #[arg(required = true)]
+        #[arg(default_values_t = ["".to_string()], required = true)]
         files: Vec<String>,
-        /// Playlist file
-        #[arg(long, value_name = "filename")]
-        playlist: Option<String>,
         /// Seek to position
         #[arg(long, short, value_delimiter = ',', value_name = "s")]
         position: Option<Vec<u64>>,
@@ -43,6 +40,10 @@ enum SubCommands {
         /// Volume of the sound
         #[arg(long, short, value_name = "n")]
         volume: Option<f64>,
+
+        /// Playlist file
+        #[arg(exclusive(true), long, value_name = "filename")]
+        playlist: Option<String>,
     },
     Stop {},
 }
