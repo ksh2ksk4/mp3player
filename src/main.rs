@@ -109,13 +109,19 @@ fn play(
 
     let mut files2: Vec<String> = vec![];
     let mut positions2: Vec<u64> = vec![];
+    // parse_json_data()の解析結果を設定するための変数
+    let mut repeat2 = false;
+    // 最終的に適用される repeat の値
+    let mut repeat3 = repeat;
+    // parse_json_data()の解析結果を設定するための変数
     let mut volume2 = 1.0;
+    // 最終的に適用される volume の値
     let mut volume3 = volume.unwrap_or(1.0);
 
     match read_json_data(playlist) {
         Ok(json) => {
             println!("json -> {json:?}");
-            parse_json_data("", json, &mut files2, &mut positions2, &mut volume2);
+            parse_json_data("", json, &mut files2, &mut positions2, &mut repeat2, &mut volume2);
             println!("files2 -> {files2:?}, positions2 -> {positions2:?}");
         }
         Err(e) => {
@@ -127,6 +133,7 @@ fn play(
     if !files2.is_empty() {
         files = files2;
         positions = positions2;
+        repeat3 = repeat2;
         volume3 = volume2;
     }
 
@@ -155,7 +162,7 @@ fn play(
                         Duration::from_secs(takes[i])
                     });
 
-                if repeat {
+                if repeat3 {
                     sink.append(tmp.repeat_infinite());
                 } else {
                     sink.append(tmp);
@@ -214,12 +221,14 @@ fn read_json_data(file: String) -> Result<Value, serde_json::Error> {
 ///
 /// - `files`: 再生対象ファイル
 /// - `positions`: シーク位置(秒)
+/// - `repeat`: リピート再生するかどうか
 /// - `volume`: ボリューム(1 を 100% とした数値)
 fn parse_json_data(
     key: &str,
     value: Value,
     files: &mut Vec<String>,
     positions: &mut Vec<u64>,
+    repeat: &mut bool,
     volume: &mut f64,
 ) {
     println!("key -> {key:?}, value -> {value:?}");
@@ -227,10 +236,18 @@ fn parse_json_data(
     match value {
         Value::Array(a) => {
             for v in a {
-                parse_json_data("0", v, files, positions, volume);
+                parse_json_data("0", v, files, positions, repeat, volume);
             }
         }
-        Value::Bool(b) => {}
+        Value::Bool(b) => {
+            match key {
+                "repeat" => {
+                    *repeat = b;
+                }
+                "dummy" => {}
+                _ => {}
+            }
+        }
         Value::Null => {}
         Value::Number(n) => {
             match key {
@@ -247,7 +264,7 @@ fn parse_json_data(
         }
         Value::Object(o) => {
             for (k, v) in o {
-                parse_json_data(k.as_str(), v, files, positions, volume);
+                parse_json_data(k.as_str(), v, files, positions, repeat, volume);
             }
         }
         Value::String(s) => {
