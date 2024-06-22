@@ -1,3 +1,4 @@
 /target
 
-assets/*.mp3
+assets/private
+assets/tracks/*.mp3
