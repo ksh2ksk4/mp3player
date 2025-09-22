@@ -2,6 +2,7 @@
 //!
 //! mp3ファイルを再生するアプリ。
 
+use chrono::{NaiveTime, Timelike};
 use clap::{Parser, Subcommand};
 use rodio::Source;
 use serde_json::Value;
@@ -30,8 +31,8 @@ enum SubCommands {
         #[arg(long, short)]
         base_path: Option<String>,
         /// Seek to position
-        #[arg(long, short, value_delimiter = ',', value_name = "s")]
-        position: Option<Vec<u64>>,
+        #[arg(long, short, value_delimiter = ',', value_name = "time_string")]
+        position: Option<Vec<String>>,
         /// Whether to repeat
         #[arg(long, short)]
         repeat: bool,
@@ -90,7 +91,7 @@ fn main() {
 /// - `files`: 再生対象ファイル
 /// - `playlist`: プレイリストファイル
 /// - `base_path`: 再生対象ファイルのベースパス
-/// - `position`: シーク位置(秒)
+/// - `position`: シーク位置(時刻文字列)
 /// - `repeat`: リピート再生するかどうか
 /// - `skip`: スキップ時間(秒)
 /// - `take`: 再生時間(秒)
@@ -99,7 +100,7 @@ fn play(
     mut files: Vec<String>,
     playlist: Option<String>,
     base_path: Option<String>,
-    position: Option<Vec<u64>>,
+    position: Option<Vec<String>>,
     repeat: bool,
     skip: Option<Vec<u64>>,
     take: Option<Vec<u64>>,
@@ -123,7 +124,7 @@ fn play(
     let mut base_path3 = base_path;
 
     let mut files2: Vec<String> = vec![];
-    let mut positions2: Vec<u64> = vec![];
+    let mut positions2: Vec<String> = vec![];
     let mut takes2: Vec<u64> = vec![];
 
     // parse_json_data()の解析結果を設定するための変数
@@ -178,7 +179,11 @@ fn play(
                 let total_duration = decoder.total_duration().unwrap_or(Duration::from_secs(0));
                 println!("total_duration -> {total_duration:?}");
 
-                decoder.try_seek(Duration::from_secs(positions[i])).unwrap();
+                decoder
+                    .try_seek(Duration::from_secs(
+                        time_string_to_seconds(&positions[i]).unwrap(),
+                    ))
+                    .unwrap();
 
                 let tmp = decoder
                     .skip_duration(Duration::from_secs(if skips.is_empty() {
@@ -252,7 +257,7 @@ fn read_json_data(file: String) -> Result<Value, serde_json::Error> {
 ///
 /// - `base_path`: 再生対象ファイルのベースパス
 /// - `files`: 再生対象ファイル
-/// - `positions`: シーク位置(秒)
+/// - `positions`: シーク位置(時刻文字列)
 /// - `repeat`: リピート再生するかどうか
 /// - `takes`: 再生時間(秒)
 /// - `volume`: ボリューム(1 を 100% とした数値)
@@ -261,7 +266,7 @@ fn parse_json_data(
     value: Value,
     base_path: &mut String,
     files: &mut Vec<String>,
-    positions: &mut Vec<u64>,
+    positions: &mut Vec<String>,
     repeat: &mut bool,
     takes: &mut Vec<u64>,
     volume: &mut f64,
@@ -283,9 +288,6 @@ fn parse_json_data(
         },
         Value::Null => {}
         Value::Number(n) => match key {
-            "position" => {
-                positions.push(n.as_u64().unwrap_or(0));
-            }
             "skip" => {}
             "take" => {
                 takes.push(n.as_u64().unwrap_or(0));
@@ -317,7 +319,27 @@ fn parse_json_data(
                 files.push(s);
             }
             "dummy" => {}
+            "position" => {
+                positions.push(s);
+            }
             _ => {}
         },
+    }
+}
+
+/// # Summary
+///
+/// 時刻文字列を秒数に変換する
+///
+/// # Arguments
+///
+/// - `time`: 時刻文字列(HH:MM:SS)
+fn time_string_to_seconds(time: &str) -> Result<u64, String> {
+    match NaiveTime::parse_from_str(time, "%H:%M:%S") {
+        Ok(parsed_time) => Ok(parsed_time.num_seconds_from_midnight() as u64),
+        Err(e) => {
+            println!("e -> {e:?}");
+            panic!("{}", e.to_string());
+        }
     }
 }
