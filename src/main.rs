@@ -7,6 +7,7 @@ use rodio::Source;
 use serde_json::Value;
 use std::fs::File;
 use std::io::{BufReader, Read};
+use std::path::Path;
 use std::time::Duration;
 
 #[derive(Debug, Parser)]
@@ -25,6 +26,9 @@ enum SubCommands {
         /// Files to play
         #[arg(default_values_t = ["".to_string()], required = true)]
         files: Vec<String>,
+        /// Base path of files to play
+        #[arg(long, short)]
+        base_path: Option<String>,
         /// Seek to position
         #[arg(long, short, value_delimiter = ',', value_name = "s")]
         position: Option<Vec<u64>>,
@@ -59,6 +63,7 @@ fn main() {
         SubCommands::Play {
             files,
             playlist,
+            base_path,
             position,
             repeat,
             skip,
@@ -66,7 +71,9 @@ fn main() {
             volume,
         } => {
             println!("files -> {files:?}, volume -> {volume:?}");
-            play(files, playlist, position, repeat, skip, take, volume);
+            play(
+                files, playlist, base_path, position, repeat, skip, take, volume,
+            );
         }
         SubCommands::Stop {} => {
             println!("stop");
@@ -82,6 +89,7 @@ fn main() {
 ///
 /// - `files`: 再生対象ファイル
 /// - `playlist`: プレイリストファイル
+/// - `base_path`: 再生対象ファイルのベースパス
 /// - `position`: シーク位置(秒)
 /// - `repeat`: リピート再生するかどうか
 /// - `skip`: スキップ時間(秒)
@@ -90,6 +98,7 @@ fn main() {
 fn play(
     mut files: Vec<String>,
     playlist: Option<String>,
+    base_path: Option<String>,
     position: Option<Vec<u64>>,
     repeat: bool,
     skip: Option<Vec<u64>>,
@@ -99,17 +108,24 @@ fn play(
     let (_stream, stream_handle) = rodio::OutputStream::try_default().unwrap();
     let mut sinks = vec![];
 
-    println!("playlist -> {playlist:?}, position -> {position:?}, repeat -> {repeat:?}, skip -> {skip:?}, take -> {take:?}");
+    println!("playlist -> {playlist:?}, base_path -> {base_path:?}, position -> {position:?}, repeat -> {repeat:?}, skip -> {skip:?}, take -> {take:?}");
     let playlist = playlist.unwrap_or_default();
+    let base_path = base_path.unwrap_or_default();
     let mut positions = position.unwrap_or_default();
     let skips = skip.unwrap_or_default();
     let mut takes = take.unwrap_or_default();
 
     let mut i = 0;
 
+    // parse_json_data()の解析結果を設定するための変数
+    let mut base_path2 = "".to_string();
+    // 最終的に適用される repeat の値
+    let mut base_path3 = base_path;
+
     let mut files2: Vec<String> = vec![];
     let mut positions2: Vec<u64> = vec![];
     let mut takes2: Vec<u64> = vec![];
+
     // parse_json_data()の解析結果を設定するための変数
     let mut repeat2 = false;
     // 最終的に適用される repeat の値
@@ -122,7 +138,16 @@ fn play(
     match read_json_data(playlist) {
         Ok(json) => {
             println!("json -> {json:?}");
-            parse_json_data("", json, &mut files2, &mut positions2, &mut repeat2, &mut takes2, &mut volume2);
+            parse_json_data(
+                "",
+                json,
+                &mut base_path2,
+                &mut files2,
+                &mut positions2,
+                &mut repeat2,
+                &mut takes2,
+                &mut volume2,
+            );
             println!("files2 -> {files2:?}, positions2 -> {positions2:?}");
         }
         Err(e) => {
@@ -132,6 +157,7 @@ fn play(
     }
 
     if !files2.is_empty() {
+        base_path3 = base_path2;
         files = files2;
         positions = positions2;
         repeat3 = repeat2;
@@ -140,7 +166,9 @@ fn play(
     }
 
     for file in &files {
-        match File::open(file) {
+        let path = Path::new(&base_path3).join(file);
+
+        match File::open(&path) {
             Ok(f) => {
                 let sink = rodio::Sink::try_new(&stream_handle).unwrap();
                 sink.set_volume(volume3 as f32);
@@ -222,6 +250,7 @@ fn read_json_data(file: String) -> Result<Value, serde_json::Error> {
 ///
 /// 以降の引数はパースした結果
 ///
+/// - `base_path`: 再生対象ファイルのベースパス
 /// - `files`: 再生対象ファイル
 /// - `positions`: シーク位置(秒)
 /// - `repeat`: リピート再生するかどうか
@@ -230,6 +259,7 @@ fn read_json_data(file: String) -> Result<Value, serde_json::Error> {
 fn parse_json_data(
     key: &str,
     value: Value,
+    base_path: &mut String,
     files: &mut Vec<String>,
     positions: &mut Vec<u64>,
     repeat: &mut bool,
@@ -241,47 +271,53 @@ fn parse_json_data(
     match value {
         Value::Array(a) => {
             for v in a {
-                parse_json_data("0", v, files, positions, repeat, takes, volume);
+                parse_json_data("0", v, base_path, files, positions, repeat, takes, volume);
             }
         }
-        Value::Bool(b) => {
-            match key {
-                "repeat" => {
-                    *repeat = b;
-                }
-                "dummy" => {}
-                _ => {}
+        Value::Bool(b) => match key {
+            "repeat" => {
+                *repeat = b;
             }
-        }
+            "dummy" => {}
+            _ => {}
+        },
         Value::Null => {}
-        Value::Number(n) => {
-            match key {
-                "position" => {
-                    positions.push(n.as_u64().unwrap_or(0));
-                }
-                "skip" => {}
-                "take" => {
-                    takes.push(n.as_u64().unwrap_or(0));
-                }
-                "volume" => {
-                    *volume = n.as_f64().unwrap_or(1.0);
-                }
-                _ => {}
+        Value::Number(n) => match key {
+            "position" => {
+                positions.push(n.as_u64().unwrap_or(0));
             }
-        }
+            "skip" => {}
+            "take" => {
+                takes.push(n.as_u64().unwrap_or(0));
+            }
+            "volume" => {
+                *volume = n.as_f64().unwrap_or(1.0);
+            }
+            _ => {}
+        },
         Value::Object(o) => {
             for (k, v) in o {
-                parse_json_data(k.as_str(), v, files, positions, repeat, takes, volume);
+                parse_json_data(
+                    k.as_str(),
+                    v,
+                    base_path,
+                    files,
+                    positions,
+                    repeat,
+                    takes,
+                    volume,
+                );
             }
         }
-        Value::String(s) => {
-            match key {
-                "file" => {
-                    files.push(s);
-                }
-                "dummy" => {}
-                _ => {}
+        Value::String(s) => match key {
+            "base_path" => {
+                *base_path = s;
             }
-        }
+            "file" => {
+                files.push(s);
+            }
+            "dummy" => {}
+            _ => {}
+        },
     }
 }
