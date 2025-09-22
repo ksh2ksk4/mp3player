@@ -1,4 +1,11 @@
+.vscode
+*.code-workspace
+
+docs
+
 /target
 
 assets/private
 assets/tracks/*.mp3
+
+._*
