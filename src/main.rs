@@ -2,8 +2,8 @@
 //!
 //! mp3ファイルを再生するアプリ。
 
-use chrono::{NaiveTime, Timelike};
 use clap::{Parser, Subcommand};
+use mp3player::time_string_to_seconds;
 use rodio::Source;
 use serde_json::Value;
 use std::fs::File;
@@ -329,36 +329,4 @@ fn parse_json_data(
             _ => {}
         },
     }
-}
-
-/// # Summary
-///
-/// 時刻文字列を秒数に変換する
-///
-/// # Arguments
-///
-/// - `time_string`: 時刻文字列(形式: `HH:MM:SS`)
-///
-/// # Returns
-///
-/// - `Ok(u64)`: 秒数
-/// - `Err(String)`: エラーメッセージ
-///
-/// # Errors
-///
-/// - 時刻文字列のパースに失敗した場合
-///
-/// # Examples
-///
-/// ```
-/// assert_eq!(time_string_to_seconds("01:23:45")?, 5025);
-/// ```
-fn time_string_to_seconds(time_string: &str) -> Result<u64, String> {
-    NaiveTime::parse_from_str(time_string, "%H:%M:%S")
-        .map(|parsed_time| parsed_time.num_seconds_from_midnight() as u64)
-        .map_err(|e| {
-            format!(
-                "Failed to parse time-formatted string: time_string -> {time_string:?}, e -> {e:?}"
-            )
-        })
 }
