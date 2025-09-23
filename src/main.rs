@@ -3,9 +3,8 @@
 //! mp3ファイルを再生するアプリ。
 
 use clap::{Parser, Subcommand};
-use mp3player::{read_json_data, time_string_to_seconds};
+use mp3player::{parse_json_data, read_json_data, time_string_to_seconds};
 use rodio::Source;
-use serde_json::Value;
 use std::fs::File;
 use std::io::BufReader;
 use std::path::Path;
@@ -224,87 +223,4 @@ fn play(
     sinks[0].sleep_until_end();
 
     Ok(())
-}
-
-/// # Summary
-///
-/// プレイリストの JSON データを再帰的にパースして、その結果を各変数に設定する
-///
-/// # Arguments
-///
-/// - `key`: JSON データのキー
-/// - `value`: JSON データのバリュー
-///
-/// 以降の引数はパースした結果
-///
-/// - `base_path`: 再生対象ファイルのベースパス
-/// - `files`: 再生対象ファイル
-/// - `positions`: シーク位置(時刻文字列)
-/// - `repeat`: リピート再生するかどうか
-/// - `takes`: 再生時間(時刻文字列)
-/// - `volume`: ボリューム(1 を 100% とした数値)
-fn parse_json_data(
-    key: &str,
-    value: Value,
-    base_path: &mut String,
-    files: &mut Vec<String>,
-    positions: &mut Vec<String>,
-    repeat: &mut bool,
-    takes: &mut Vec<String>,
-    volume: &mut f64,
-) {
-    println!("key -> {key:?}, value -> {value:?}");
-
-    match value {
-        Value::Array(a) => {
-            for v in a {
-                parse_json_data("0", v, base_path, files, positions, repeat, takes, volume);
-            }
-        }
-        Value::Bool(b) => match key {
-            "repeat" => {
-                *repeat = b;
-            }
-            "dummy" => {}
-            _ => {}
-        },
-        Value::Null => {}
-        Value::Number(n) => match key {
-            "skip" => {}
-            "volume" => {
-                *volume = n.as_f64().unwrap_or(1.0);
-            }
-            _ => {}
-        },
-        Value::Object(o) => {
-            for (k, v) in o {
-                parse_json_data(
-                    k.as_str(),
-                    v,
-                    base_path,
-                    files,
-                    positions,
-                    repeat,
-                    takes,
-                    volume,
-                );
-            }
-        }
-        Value::String(s) => match key {
-            "base_path" => {
-                *base_path = s;
-            }
-            "file" => {
-                files.push(s);
-            }
-            "dummy" => {}
-            "position" => {
-                positions.push(s);
-            }
-            "take" => {
-                takes.push(s);
-            }
-            _ => {}
-        },
-    }
 }

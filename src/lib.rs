@@ -26,6 +26,89 @@ pub fn read_json_data(file: String) -> Result<serde_json::Value, serde_json::Err
 
 /// # Summary
 ///
+/// プレイリストの JSON データを再帰的にパースして、その結果を各変数に設定する
+///
+/// # Arguments
+///
+/// - `key`: JSON データのキー
+/// - `value`: JSON データのバリュー
+///
+/// 以降の引数はパースした結果
+///
+/// - `base_path`: 再生対象ファイルのベースパス
+/// - `files`: 再生対象ファイル
+/// - `positions`: シーク位置(時刻文字列)
+/// - `repeat`: リピート再生するかどうか
+/// - `takes`: 再生時間(時刻文字列)
+/// - `volume`: ボリューム(1 を 100% とした数値)
+pub fn parse_json_data(
+    key: &str,
+    value: serde_json::Value,
+    base_path: &mut String,
+    files: &mut Vec<String>,
+    positions: &mut Vec<String>,
+    repeat: &mut bool,
+    takes: &mut Vec<String>,
+    volume: &mut f64,
+) {
+    println!("key -> {key:?}, value -> {value:?}");
+
+    match value {
+        serde_json::Value::Array(a) => {
+            for v in a {
+                parse_json_data("0", v, base_path, files, positions, repeat, takes, volume);
+            }
+        }
+        serde_json::Value::Bool(b) => match key {
+            "repeat" => {
+                *repeat = b;
+            }
+            "dummy" => {}
+            _ => {}
+        },
+        serde_json::Value::Null => {}
+        serde_json::Value::Number(n) => match key {
+            "skip" => {}
+            "volume" => {
+                *volume = n.as_f64().unwrap_or(1.0);
+            }
+            _ => {}
+        },
+        serde_json::Value::Object(o) => {
+            for (k, v) in o {
+                parse_json_data(
+                    k.as_str(),
+                    v,
+                    base_path,
+                    files,
+                    positions,
+                    repeat,
+                    takes,
+                    volume,
+                );
+            }
+        }
+        serde_json::Value::String(s) => match key {
+            "base_path" => {
+                *base_path = s;
+            }
+            "file" => {
+                files.push(s);
+            }
+            "dummy" => {}
+            "position" => {
+                positions.push(s);
+            }
+            "take" => {
+                takes.push(s);
+            }
+            _ => {}
+        },
+    }
+}
+
+/// # Summary
+///
 /// 時刻文字列を秒数に変換する
 ///
 /// # Arguments
