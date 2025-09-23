@@ -1,4 +1,28 @@
 use chrono::{NaiveTime, Timelike};
+use std::fs::File;
+use std::io::Read;
+
+/// # Summary
+///
+/// ファイルから JSON データを読み込み、その JSON データを返す
+///
+/// # Arguments
+///
+/// - `file`: JSON ファイル
+pub fn read_json_data(file: String) -> Result<serde_json::Value, serde_json::Error> {
+    match File::open(file) {
+        Ok(mut f) => {
+            let mut contents = String::new();
+
+            f.read_to_string(&mut contents).unwrap();
+            serde_json::from_str::<serde_json::Value>(&contents)
+        }
+        Err(e) => {
+            println!("e -> {e:?}");
+            panic!("{}", e.to_string());
+        }
+    }
+}
 
 /// # Summary
 ///

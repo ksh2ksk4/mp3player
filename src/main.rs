@@ -3,11 +3,11 @@
 //! mp3ファイルを再生するアプリ。
 
 use clap::{Parser, Subcommand};
-use mp3player::time_string_to_seconds;
+use mp3player::{read_json_data, time_string_to_seconds};
 use rodio::Source;
 use serde_json::Value;
 use std::fs::File;
-use std::io::{BufReader, Read};
+use std::io::BufReader;
 use std::path::Path;
 use std::time::Duration;
 
@@ -224,28 +224,6 @@ fn play(
     sinks[0].sleep_until_end();
 
     Ok(())
-}
-
-/// # Summary
-///
-/// ファイルから JSON データを読み込み、その JSON データを返す
-///
-/// # Arguments
-///
-/// - `file`: JSON ファイル
-fn read_json_data(file: String) -> Result<Value, serde_json::Error> {
-    match File::open(file) {
-        Ok(mut f) => {
-            let mut contents = String::new();
-
-            f.read_to_string(&mut contents).unwrap();
-            serde_json::from_str::<Value>(&contents)
-        }
-        Err(e) => {
-            println!("e -> {e:?}");
-            panic!("{}", e.to_string());
-        }
-    }
 }
 
 /// # Summary
