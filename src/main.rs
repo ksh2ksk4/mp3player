@@ -72,9 +72,10 @@ fn main() {
             volume,
         } => {
             println!("files -> {files:?}, volume -> {volume:?}");
-            play(
+            let result = play(
                 files, playlist, base_path, position, repeat, skip, take, volume,
             );
+            println!("result -> {result:?}");
         }
         SubCommands::Stop {} => {
             println!("stop");
@@ -96,6 +97,11 @@ fn main() {
 /// - `skip`: スキップ時間(秒)
 /// - `take`: 再生時間(時刻文字列)
 /// - `volume`: ボリューム(1 を 100% とした数値)
+///
+/// # Returns
+///
+/// - `Ok(())`: ()
+/// - `Err(Box<dyn std::error::Error>)`: エラーメッセージ
 fn play(
     mut files: Vec<String>,
     playlist: Option<String>,
@@ -105,7 +111,7 @@ fn play(
     skip: Option<Vec<u64>>,
     take: Option<Vec<String>>,
     volume: Option<f64>,
-) {
+) -> Result<(), Box<dyn std::error::Error>> {
     let (_stream, stream_handle) = rodio::OutputStream::try_default().unwrap();
     let mut sinks = vec![];
 
@@ -179,11 +185,7 @@ fn play(
                 let total_duration = decoder.total_duration().unwrap_or(Duration::from_secs(0));
                 println!("total_duration -> {total_duration:?}");
 
-                decoder
-                    .try_seek(Duration::from_secs(
-                        time_string_to_seconds(&positions[i]).unwrap(),
-                    ))
-                    .unwrap();
+                decoder.try_seek(Duration::from_secs(time_string_to_seconds(&positions[i])?))?;
 
                 let tmp = decoder
                     .skip_duration(Duration::from_secs(if skips.is_empty() {
@@ -194,7 +196,7 @@ fn play(
                     .take_duration(if takes.is_empty() {
                         total_duration
                     } else {
-                        Duration::from_secs(time_string_to_seconds(&takes[i]).unwrap())
+                        Duration::from_secs(time_string_to_seconds(&takes[i])?)
                     });
 
                 if repeat3 {
@@ -220,6 +222,8 @@ fn play(
     //todo 最長のトラックの再生が完了するのを待つように修正
     // 最初のトラックの再生が完了するまで待つ
     sinks[0].sleep_until_end();
+
+    Ok(())
 }
 
 /// # Summary
@@ -333,13 +337,28 @@ fn parse_json_data(
 ///
 /// # Arguments
 ///
-/// - `time`: 時刻文字列(HH:MM:SS)
-fn time_string_to_seconds(time: &str) -> Result<u64, String> {
-    match NaiveTime::parse_from_str(time, "%H:%M:%S") {
-        Ok(parsed_time) => Ok(parsed_time.num_seconds_from_midnight() as u64),
-        Err(e) => {
-            println!("e -> {e:?}");
-            panic!("{}", e.to_string());
-        }
-    }
+/// - `time_string`: 時刻文字列(形式: `HH:MM:SS`)
+///
+/// # Returns
+///
+/// - `Ok(u64)`: 秒数
+/// - `Err(String)`: エラーメッセージ
+///
+/// # Errors
+///
+/// - 時刻文字列のパースに失敗した場合
+///
+/// # Examples
+///
+/// ```
+/// assert_eq!(time_string_to_seconds("01:23:45")?, 5025);
+/// ```
+fn time_string_to_seconds(time_string: &str) -> Result<u64, String> {
+    NaiveTime::parse_from_str(time_string, "%H:%M:%S")
+        .map(|parsed_time| parsed_time.num_seconds_from_midnight() as u64)
+        .map_err(|e| {
+            format!(
+                "Failed to parse time-formatted string: time_string -> {time_string:?}, e -> {e:?}"
+            )
+        })
 }
