@@ -40,8 +40,8 @@ enum SubCommands {
         #[arg(long, short, value_delimiter = ',', value_name = "s")]
         skip: Option<Vec<u64>>,
         /// Take duration
-        #[arg(long, short, value_delimiter = ',', value_name = "s")]
-        take: Option<Vec<u64>>,
+        #[arg(long, short, value_delimiter = ',', value_name = "time_string")]
+        take: Option<Vec<String>>,
         /// Volume of the sound
         #[arg(long, short, value_name = "n")]
         volume: Option<f64>,
@@ -94,7 +94,7 @@ fn main() {
 /// - `position`: シーク位置(時刻文字列)
 /// - `repeat`: リピート再生するかどうか
 /// - `skip`: スキップ時間(秒)
-/// - `take`: 再生時間(秒)
+/// - `take`: 再生時間(時刻文字列)
 /// - `volume`: ボリューム(1 を 100% とした数値)
 fn play(
     mut files: Vec<String>,
@@ -103,7 +103,7 @@ fn play(
     position: Option<Vec<String>>,
     repeat: bool,
     skip: Option<Vec<u64>>,
-    take: Option<Vec<u64>>,
+    take: Option<Vec<String>>,
     volume: Option<f64>,
 ) {
     let (_stream, stream_handle) = rodio::OutputStream::try_default().unwrap();
@@ -125,7 +125,7 @@ fn play(
 
     let mut files2: Vec<String> = vec![];
     let mut positions2: Vec<String> = vec![];
-    let mut takes2: Vec<u64> = vec![];
+    let mut takes2: Vec<String> = vec![];
 
     // parse_json_data()の解析結果を設定するための変数
     let mut repeat2 = false;
@@ -194,7 +194,7 @@ fn play(
                     .take_duration(if takes.is_empty() {
                         total_duration
                     } else {
-                        Duration::from_secs(takes[i])
+                        Duration::from_secs(time_string_to_seconds(&takes[i]).unwrap())
                     });
 
                 if repeat3 {
@@ -259,7 +259,7 @@ fn read_json_data(file: String) -> Result<Value, serde_json::Error> {
 /// - `files`: 再生対象ファイル
 /// - `positions`: シーク位置(時刻文字列)
 /// - `repeat`: リピート再生するかどうか
-/// - `takes`: 再生時間(秒)
+/// - `takes`: 再生時間(時刻文字列)
 /// - `volume`: ボリューム(1 を 100% とした数値)
 fn parse_json_data(
     key: &str,
@@ -268,7 +268,7 @@ fn parse_json_data(
     files: &mut Vec<String>,
     positions: &mut Vec<String>,
     repeat: &mut bool,
-    takes: &mut Vec<u64>,
+    takes: &mut Vec<String>,
     volume: &mut f64,
 ) {
     println!("key -> {key:?}, value -> {value:?}");
@@ -289,9 +289,6 @@ fn parse_json_data(
         Value::Null => {}
         Value::Number(n) => match key {
             "skip" => {}
-            "take" => {
-                takes.push(n.as_u64().unwrap_or(0));
-            }
             "volume" => {
                 *volume = n.as_f64().unwrap_or(1.0);
             }
@@ -321,6 +318,9 @@ fn parse_json_data(
             "dummy" => {}
             "position" => {
                 positions.push(s);
+            }
+            "take" => {
+                takes.push(s);
             }
             _ => {}
         },
