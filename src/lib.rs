@@ -4,24 +4,64 @@ use std::io::Read;
 
 /// # Summary
 ///
-/// ファイルから JSON データを読み込み、その JSON データを返す
+/// ファイルから JSON データを読み込み、デシリアライズして返す
 ///
 /// # Arguments
 ///
-/// - `file`: JSON ファイル
-pub fn read_json_data(file: String) -> Result<serde_json::Value, serde_json::Error> {
-    match File::open(file) {
-        Ok(mut f) => {
+/// - `file`: ファイル
+///
+/// # Returns
+///
+/// - `Ok(serde_json::Value)`: 任意の JSON データ
+/// - `Err(String)`: エラーメッセージ
+///
+/// # Errors
+///
+/// - ファイルのオープンに失敗した場合
+/// - ファイルのリードに失敗した場合
+/// - JSON データをデシリアライズできなかった場合
+///
+/// # Examples
+///
+/// ```
+/// use mp3player::read_json_data;
+///
+/// let result = read_json_data("tests/assets/playlist.json".to_string());
+/// assert!(result.is_ok());
+/// let json_data = result.unwrap();
+/// assert_eq!(json_data["playlist"][0]["file"], "assets/tracks/MusMus-BGM-136.mp3");
+/// assert_eq!(json_data["playlist"][0]["position"], "00:02:20");
+/// assert_eq!(json_data["playlist"][1]["file"], "assets/tracks/MusMus-BGM-162.mp3");
+/// assert_eq!(json_data["playlist"][1]["position"], "00:02:30");
+/// assert_eq!(json_data["volume"], 0.1);
+///
+/// let result = read_json_data("nonexistent_file.json".to_string());
+/// assert!(result.is_err());
+/// let error_message = result.unwrap_err();
+/// assert_eq!(error_message, "Failed to open file: file -> \"nonexistent_file.json\", e -> Os { code: 2, kind: NotFound, message: \"No such file or directory\" }");
+///
+/// // read_to_string() のテストはなし
+/// // オープンできるがリードできないテストファイルを用意できないため
+///
+/// let result = read_json_data("tests/assets/dummy.txt".to_string());
+/// assert!(result.is_err());
+/// let error_message = result.unwrap_err();
+/// assert_eq!(error_message, "Failed to deserialize json data: contents -> \"dummy\\n\", e -> Error(\"expected value\", line: 1, column: 1)");
+/// ```
+pub fn read_json_data(file: String) -> Result<serde_json::Value, String> {
+    File::open(&file)
+        .map_err(|e| format!("Failed to open file: file -> {file:?}, e -> {e:?}"))
+        .and_then(|mut f| {
             let mut contents = String::new();
-
-            f.read_to_string(&mut contents).unwrap();
-            serde_json::from_str::<serde_json::Value>(&contents)
-        }
-        Err(e) => {
-            println!("e -> {e:?}");
-            panic!("{}", e.to_string());
-        }
-    }
+            f.read_to_string(&mut contents)
+                .map_err(|e| format!("Failed to read file: file -> {file:?}, e -> {e:?}"))
+                .map(|_| contents)
+        })
+        .and_then(|contents| {
+            serde_json::from_str::<serde_json::Value>(&contents).map_err(|e| {
+                format!("Failed to deserialize json data: contents -> {contents:?}, e -> {e:?}")
+            })
+        })
 }
 
 /// # Summary

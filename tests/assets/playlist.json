@@ -1,0 +1,13 @@
+{
+  "playlist": [
+    {
+      "file": "assets/tracks/MusMus-BGM-136.mp3",
+      "position": "00:02:20"
+    },
+    {
+      "file": "assets/tracks/MusMus-BGM-162.mp3",
+      "position": "00:02:30"
+    }
+  ],
+  "volume": 0.1
+}
