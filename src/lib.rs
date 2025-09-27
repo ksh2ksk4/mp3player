@@ -1,41 +1,124 @@
 use chrono::{NaiveTime, Timelike};
+use serde::{Deserialize, Serialize};
+use serde_json;
 use std::fs::File;
 use std::io::Read;
 
 /// # Summary
 ///
-/// ファイルから JSON データを読み込み、デシリアライズして返す
+/// プレイリスト
+///
+/// # Fields
+///
+/// - `base_path`: 再生対象ファイルのベースパス
+/// - `tracks`: 再生対象トラックのリスト
+/// - `repeat`: リピート再生するかどうか
+/// - `volume`: ボリューム(1 を 100% とした数値)
+#[derive(Debug, Deserialize, Serialize)]
+pub struct Playlist {
+    base_path: String,
+    tracks: Vec<Track>,
+    repeat: bool,
+    volume: f64,
+}
+
+impl Playlist {
+    pub fn base_path(&self) -> &str {
+        &self.base_path
+    }
+
+    pub fn tracks(&self) -> &Vec<Track> {
+        &self.tracks
+    }
+
+    pub fn repeat(&self) -> bool {
+        self.repeat
+    }
+
+    pub fn volume(&self) -> f64 {
+        self.volume
+    }
+}
+
+/// # Summary
+///
+/// トラックリスト
+///
+/// # Fields
+///
+/// - `file`: 再生対象ファイル
+/// - `start_position`: 開始位置(時刻文字列)
+/// - `rank`: ランク
+/// - `playback_duration`: 再生時間(時刻文字列)
+#[derive(Debug, Deserialize, Serialize)]
+pub struct Track {
+    file: String,
+    start_position: String,
+    rank: u64,
+    playback_duration: String,
+}
+
+impl Track {
+    pub fn file(&self) -> &str {
+        &self.file
+    }
+
+    pub fn start_position(&self) -> &str {
+        &self.start_position
+    }
+
+    pub fn rank(&self) -> u64 {
+        self.rank
+    }
+
+    pub fn playback_duration(&self) -> &str {
+        &self.playback_duration
+    }
+}
+
+/// # Summary
+///
+/// プレイリストファイルを読み込み、プレイリストデータを返す
 ///
 /// # Arguments
 ///
-/// - `file`: ファイル
+/// - `file`: プレイリストファイル
 ///
 /// # Returns
 ///
-/// - `Ok(serde_json::Value)`: 任意の JSON データ
+/// - `Ok(Playlist)`: プレイリストデータ
 /// - `Err(String)`: エラーメッセージ
 ///
 /// # Errors
 ///
-/// - ファイルのオープンに失敗した場合
-/// - ファイルのリードに失敗した場合
-/// - JSON データをデシリアライズできなかった場合
+/// - プレイリストファイルのオープンに失敗した場合
+/// - プレイリストファイルのリードに失敗した場合
+/// - プレイリストデータをデシリアライズできなかった場合
 ///
 /// # Examples
 ///
 /// ```
-/// use mp3player::read_json_data;
+/// use mp3player::get_playlist;
 ///
-/// let result = read_json_data("tests/assets/playlist.json".to_string());
+/// let result = get_playlist("tests/assets/playlist.json".to_string());
 /// assert!(result.is_ok());
-/// let json_data = result.unwrap();
-/// assert_eq!(json_data["playlist"][0]["file"], "assets/tracks/MusMus-BGM-136.mp3");
-/// assert_eq!(json_data["playlist"][0]["position"], "00:02:20");
-/// assert_eq!(json_data["playlist"][1]["file"], "assets/tracks/MusMus-BGM-162.mp3");
-/// assert_eq!(json_data["playlist"][1]["position"], "00:02:30");
-/// assert_eq!(json_data["volume"], 0.1);
+/// let playlist = result.unwrap();
+/// assert_eq!(playlist.base_path(), "/foo");
+/// assert_eq!(playlist.repeat(), false);
+/// assert_eq!(playlist.volume(), 0.1);
+/// let tracks = playlist.tracks();
+/// let track = &tracks[0];
+/// assert_eq!(track.file(), "assets/tracks/MusMus-BGM-136.mp3");
+/// assert_eq!(track.start_position(), "00:02:20");
+/// assert_eq!(track.rank(), 1);
+/// assert_eq!(track.playback_duration(), "00:00:10");
+/// let track = &tracks[1];
+/// assert_eq!(track.file(), "assets/tracks/MusMus-BGM-162.mp3");
+/// assert_eq!(track.start_position(), "00:02:30");
+/// assert_eq!(track.rank(), 2);
+/// assert_eq!(track.playback_duration(), "00:00:20");
 ///
-/// let result = read_json_data("nonexistent_file.json".to_string());
+/// let result = get_playlist("nonexistent_file.json".to_string());
 /// assert!(result.is_err());
 /// let error_message = result.unwrap_err();
 /// assert_eq!(error_message, "Failed to open file: file -> \"nonexistent_file.json\", e -> Os { code: 2, kind: NotFound, message: \"No such file or directory\" }");
@@ -43,12 +126,12 @@ use std::io::Read;
 /// // read_to_string() のテストはなし
 /// // オープンできるがリードできないテストファイルを用意できないため
 ///
-/// let result = read_json_data("tests/assets/dummy.txt".to_string());
+/// let result = get_playlist("tests/assets/dummy.txt".to_string());
 /// assert!(result.is_err());
 /// let error_message = result.unwrap_err();
 /// assert_eq!(error_message, "Failed to deserialize json data: contents -> \"dummy\\n\", e -> Error(\"expected value\", line: 1, column: 1)");
 /// ```
-pub fn read_json_data(file: String) -> Result<serde_json::Value, String> {
+pub fn get_playlist(file: String) -> Result<Playlist, String> {
     File::open(&file)
         .map_err(|e| format!("Failed to open file: file -> {file:?}, e -> {e:?}"))
         .and_then(|mut f| {
@@ -58,93 +141,10 @@ pub fn read_json_data(file: String) -> Result<serde_json::Value, String> {
                 .map(|_| contents)
         })
         .and_then(|contents| {
-            serde_json::from_str::<serde_json::Value>(&contents).map_err(|e| {
+            serde_json::from_str::<Playlist>(&contents).map_err(|e| {
                 format!("Failed to deserialize json data: contents -> {contents:?}, e -> {e:?}")
             })
         })
-}
-
-/// # Summary
-///
-/// プレイリストの JSON データを再帰的にパースして、その結果を各変数に設定する
-///
-/// # Arguments
-///
-/// - `key`: JSON データのキー
-/// - `value`: JSON データのバリュー
-///
-/// 以降の引数はパースした結果
-///
-/// - `base_path`: 再生対象ファイルのベースパス
-/// - `files`: 再生対象ファイル
-/// - `positions`: シーク位置(時刻文字列)
-/// - `repeat`: リピート再生するかどうか
-/// - `takes`: 再生時間(時刻文字列)
-/// - `volume`: ボリューム(1 を 100% とした数値)
-pub fn parse_json_data(
-    key: &str,
-    value: serde_json::Value,
-    base_path: &mut String,
-    files: &mut Vec<String>,
-    positions: &mut Vec<String>,
-    repeat: &mut bool,
-    takes: &mut Vec<String>,
-    volume: &mut f64,
-) {
-    println!("key -> {key:?}, value -> {value:?}");
-
-    match value {
-        serde_json::Value::Array(a) => {
-            for v in a {
-                parse_json_data("0", v, base_path, files, positions, repeat, takes, volume);
-            }
-        }
-        serde_json::Value::Bool(b) => match key {
-            "repeat" => {
-                *repeat = b;
-            }
-            "dummy" => {}
-            _ => {}
-        },
-        serde_json::Value::Null => {}
-        serde_json::Value::Number(n) => match key {
-            "skip" => {}
-            "volume" => {
-                *volume = n.as_f64().unwrap_or(1.0);
-            }
-            _ => {}
-        },
-        serde_json::Value::Object(o) => {
-            for (k, v) in o {
-                parse_json_data(
-                    k.as_str(),
-                    v,
-                    base_path,
-                    files,
-                    positions,
-                    repeat,
-                    takes,
-                    volume,
-                );
-            }
-        }
-        serde_json::Value::String(s) => match key {
-            "base_path" => {
-                *base_path = s;
-            }
-            "file" => {
-                files.push(s);
-            }
-            "dummy" => {}
-            "position" => {
-                positions.push(s);
-            }
-            "take" => {
-                takes.push(s);
-            }
-            _ => {}
-        },
-    }
 }
 
 /// # Summary

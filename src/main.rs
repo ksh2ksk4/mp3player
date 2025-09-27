@@ -3,7 +3,7 @@
 //! mp3ファイルを再生するアプリ。
 
 use clap::{Parser, Subcommand};
-use mp3player::{parse_json_data, read_json_data, time_string_to_seconds};
+use mp3player::{get_playlist, time_string_to_seconds};
 use rodio::Source;
 use std::fs::File;
 use std::io::BufReader;
@@ -20,34 +20,12 @@ struct Cli {
 
 #[derive(Debug, Subcommand)]
 enum SubCommands {
-    /// Play the specified file
+    /// プレイリストを再生する
     #[command(arg_required_else_help = true)]
     Play {
-        /// Files to play
-        #[arg(default_values_t = ["".to_string()], required = true)]
-        files: Vec<String>,
-        /// Base path of files to play
-        #[arg(long, short)]
-        base_path: Option<String>,
-        /// Seek to position
-        #[arg(long, short, value_delimiter = ',', value_name = "time_string")]
-        position: Option<Vec<String>>,
-        /// Whether to repeat
-        #[arg(long, short)]
-        repeat: bool,
-        /// Skip duration
-        #[arg(long, short, value_delimiter = ',', value_name = "s")]
-        skip: Option<Vec<u64>>,
-        /// Take duration
-        #[arg(long, short, value_delimiter = ',', value_name = "time_string")]
-        take: Option<Vec<String>>,
-        /// Volume of the sound
-        #[arg(long, short, value_name = "n")]
-        volume: Option<f64>,
-
-        /// Playlist file
-        #[arg(exclusive(true), long, value_name = "filename")]
-        playlist: Option<String>,
+        /// プレイリストファイル
+        #[arg(long, required = true, short, value_name = "filename")]
+        playlist_file: String,
     },
     Stop {},
 }
@@ -60,20 +38,8 @@ fn main() {
     println!("args -> {args:?}");
 
     match args.sub_command {
-        SubCommands::Play {
-            files,
-            playlist,
-            base_path,
-            position,
-            repeat,
-            skip,
-            take,
-            volume,
-        } => {
-            println!("files -> {files:?}, volume -> {volume:?}");
-            let result = play(
-                files, playlist, base_path, position, repeat, skip, take, volume,
-            );
+        SubCommands::Play { playlist_file } => {
+            let result = play(playlist_file);
             println!("result -> {result:?}");
         }
         SubCommands::Stop {} => {
@@ -84,130 +50,64 @@ fn main() {
 
 /// # Summary
 ///
-/// 指定したファイルを再生する
+/// プレイリストに含まれるトラックを再生する
 ///
 /// # Arguments
 ///
-/// - `files`: 再生対象ファイル
-/// - `playlist`: プレイリストファイル
-/// - `base_path`: 再生対象ファイルのベースパス
-/// - `position`: シーク位置(時刻文字列)
-/// - `repeat`: リピート再生するかどうか
-/// - `skip`: スキップ時間(秒)
-/// - `take`: 再生時間(時刻文字列)
-/// - `volume`: ボリューム(1 を 100% とした数値)
+/// - `playlist_file`: プレイリストファイル
 ///
 /// # Returns
 ///
 /// - `Ok(())`: ()
 /// - `Err(Box<dyn std::error::Error>)`: エラーメッセージ
-fn play(
-    mut files: Vec<String>,
-    playlist: Option<String>,
-    base_path: Option<String>,
-    position: Option<Vec<String>>,
-    repeat: bool,
-    skip: Option<Vec<u64>>,
-    take: Option<Vec<String>>,
-    volume: Option<f64>,
-) -> Result<(), Box<dyn std::error::Error>> {
+fn play(playlist_file: String) -> Result<(), Box<dyn std::error::Error>> {
     let (_stream, stream_handle) = rodio::OutputStream::try_default().unwrap();
     let mut sinks = vec![];
 
-    println!("playlist -> {playlist:?}, base_path -> {base_path:?}, position -> {position:?}, repeat -> {repeat:?}, skip -> {skip:?}, take -> {take:?}");
-    let playlist = playlist.unwrap_or_default();
-    let base_path = base_path.unwrap_or_default();
-    let mut positions = position.unwrap_or_default();
-    let skips = skip.unwrap_or_default();
-    let mut takes = take.unwrap_or_default();
+    println!("playlist_file -> {playlist_file:?}");
 
-    let mut i = 0;
+    let playlist;
 
-    // parse_json_data()の解析結果を設定するための変数
-    let mut base_path2 = "".to_string();
-    // 最終的に適用される repeat の値
-    let mut base_path3 = base_path;
-
-    let mut files2: Vec<String> = vec![];
-    let mut positions2: Vec<String> = vec![];
-    let mut takes2: Vec<String> = vec![];
-
-    // parse_json_data()の解析結果を設定するための変数
-    let mut repeat2 = false;
-    // 最終的に適用される repeat の値
-    let mut repeat3 = repeat;
-    // parse_json_data()の解析結果を設定するための変数
-    let mut volume2 = 1.0;
-    // 最終的に適用される volume の値
-    let mut volume3 = volume.unwrap_or(1.0);
-
-    match read_json_data(playlist) {
+    match get_playlist(playlist_file) {
         Ok(json) => {
             println!("json -> {json:?}");
-            parse_json_data(
-                "",
-                json,
-                &mut base_path2,
-                &mut files2,
-                &mut positions2,
-                &mut repeat2,
-                &mut takes2,
-                &mut volume2,
-            );
-            println!("files2 -> {files2:?}, positions2 -> {positions2:?}");
+            playlist = json;
         }
         Err(e) => {
-            println!("e -> {e:?}");
-            panic!("{}", e.to_string());
+            panic!("e -> {e:?}");
         }
     }
 
-    if !files2.is_empty() {
-        base_path3 = base_path2;
-        files = files2;
-        positions = positions2;
-        repeat3 = repeat2;
-        takes = takes2;
-        volume3 = volume2;
-    }
-
-    for file in &files {
-        let path = Path::new(&base_path3).join(file);
-
-        match File::open(&path) {
+    for track in playlist.tracks() {
+        match File::open(Path::new(playlist.base_path()).join(track.file())) {
             Ok(f) => {
                 let sink = rodio::Sink::try_new(&stream_handle).unwrap();
-                sink.set_volume(volume3 as f32);
+                sink.set_volume(playlist.volume() as f32);
 
                 let mut decoder = rodio::Decoder::new(BufReader::new(f)).unwrap();
-                // 0.18.0 から値が取得できるようになっている
-                let total_duration = decoder.total_duration().unwrap_or(Duration::from_secs(0));
-                println!("total_duration -> {total_duration:?}");
 
-                decoder.try_seek(Duration::from_secs(time_string_to_seconds(&positions[i])?))?;
+                let start_position = track.start_position();
+                let start_position = if start_position == "" {
+                    Duration::from_secs(0)
+                } else {
+                    Duration::from_secs(time_string_to_seconds(start_position)?)
+                };
+                decoder.try_seek(start_position)?;
 
-                let tmp = decoder
-                    .skip_duration(Duration::from_secs(if skips.is_empty() {
-                        0
-                    } else {
-                        skips[i]
-                    }))
-                    .take_duration(if takes.is_empty() {
-                        total_duration
-                    } else {
-                        Duration::from_secs(time_string_to_seconds(&takes[i])?)
-                    });
+                let playback_duration = track.playback_duration();
+                let playback_duration = if playback_duration == "" {
+                    // 0.18.0 から値が取得できるようになっている
+                    decoder.total_duration().unwrap_or(Duration::from_secs(0))
+                } else {
+                    Duration::from_secs(time_string_to_seconds(playback_duration)?)
+                };
+                let tmp = decoder.take_duration(playback_duration);
 
-                if repeat3 {
+                if playlist.repeat() {
                     sink.append(tmp.repeat_infinite());
                 } else {
                     sink.append(tmp);
                 }
-
-                i += 1;
-
-                let length = sink.len();
-                println!("len() -> {length:?}");
 
                 sinks.push(sink);
             }
