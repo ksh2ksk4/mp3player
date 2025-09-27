@@ -169,7 +169,13 @@ pub fn parse_json_data(
 /// ```
 /// use mp3player::time_string_to_seconds;
 ///
-/// assert_eq!(time_string_to_seconds("01:23:45").unwrap(), 5025);
+/// let result = time_string_to_seconds("01:23:45");
+/// assert!(result.is_ok());
+/// assert_eq!(result.unwrap(), 5025);
+///
+/// let result = time_string_to_seconds("99:99:99");
+/// assert!(result.is_err());
+/// assert_eq!(result.unwrap_err(), "Failed to parse time-formatted string: time_string -> \"99:99:99\", e -> ParseError(OutOfRange)");
 /// ```
 pub fn time_string_to_seconds(time_string: &str) -> Result<u64, String> {
     NaiveTime::parse_from_str(time_string, "%H:%M:%S")
