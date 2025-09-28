@@ -77,8 +77,13 @@ impl Track {
         self.rank
     }
 
-    pub fn playback_duration(&self) -> &str {
-        &self.playback_duration
+    pub fn playback_duration(&self) -> Result<Duration, String> {
+        let playback_duration = &self.playback_duration;
+        Ok(Duration::from_secs(if playback_duration == "" {
+            0
+        } else {
+            time_string_to_seconds(playback_duration)?
+        }))
     }
 }
 
@@ -122,7 +127,9 @@ impl Track {
 /// assert!(result.is_ok());
 /// assert_eq!(result.unwrap(), Duration::from_secs(140));
 /// assert_eq!(track.rank(), 1);
-/// assert_eq!(track.playback_duration(), "00:00:10");
+/// let result = track.playback_duration();
+/// assert!(result.is_ok());
+/// assert_eq!(result.unwrap(), Duration::from_secs(10));
 ///
 /// let track = &tracks[1];
 /// assert_eq!(track.file(), "assets/tracks/MusMus-BGM-162.mp3");
@@ -130,7 +137,9 @@ impl Track {
 /// assert!(result.is_ok());
 /// assert_eq!(result.unwrap(), Duration::from_secs(150));
 /// assert_eq!(track.rank(), 2);
-/// assert_eq!(track.playback_duration(), "00:00:20");
+/// let result = track.playback_duration();
+/// assert!(result.is_ok());
+/// assert_eq!(result.unwrap(), Duration::from_secs(20));
 ///
 /// let result = get_playlist("nonexistent_file.json".to_string());
 /// assert!(result.is_err());

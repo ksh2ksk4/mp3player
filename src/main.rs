@@ -3,7 +3,7 @@
 //! mp3ファイルを再生するアプリ。
 
 use clap::{Parser, Subcommand};
-use mp3player::{get_playlist, time_string_to_seconds};
+use mp3player::get_playlist;
 use rodio::Source;
 use std::fs::File;
 use std::io::BufReader;
@@ -87,13 +87,13 @@ fn play(playlist_file: String) -> Result<(), Box<dyn std::error::Error>> {
                 let mut decoder = rodio::Decoder::new(BufReader::new(f)).unwrap();
                 decoder.try_seek(track.start_position()?)?;
 
-                let playback_duration = track.playback_duration();
-                let playback_duration = if playback_duration == "" {
-                    // 0.18.0 から値が取得できるようになっている
-                    decoder.total_duration().unwrap_or(Duration::from_secs(0))
-                } else {
-                    Duration::from_secs(time_string_to_seconds(playback_duration)?)
-                };
+                let mut playback_duration = track.playback_duration()?;
+
+                if playback_duration.is_zero() {
+                    // note 0.18.0 から値が取得できるようになっている
+                    playback_duration = decoder.total_duration().unwrap_or(Duration::from_secs(0));
+                }
+
                 let tmp = decoder.take_duration(playback_duration);
 
                 if playlist.repeat() {
