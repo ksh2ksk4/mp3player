@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use serde_json;
 use std::fs::File;
 use std::io::Read;
+use std::time::Duration;
 
 /// # Summary
 ///
@@ -63,8 +64,13 @@ impl Track {
         &self.file
     }
 
-    pub fn start_position(&self) -> &str {
-        &self.start_position
+    pub fn start_position(&self) -> Result<Duration, String> {
+        let start_position = &self.start_position;
+        Ok(Duration::from_secs(if start_position == "" {
+            0
+        } else {
+            time_string_to_seconds(start_position)?
+        }))
     }
 
     pub fn rank(&self) -> u64 {
@@ -99,22 +105,30 @@ impl Track {
 ///
 /// ```
 /// use mp3player::get_playlist;
+/// use std::time::Duration;
 ///
 /// let result = get_playlist("tests/assets/playlist.json".to_string());
 /// assert!(result.is_ok());
+///
 /// let playlist = result.unwrap();
 /// assert_eq!(playlist.base_path(), "/foo");
 /// assert_eq!(playlist.repeat(), false);
 /// assert_eq!(playlist.volume(), 0.1);
+///
 /// let tracks = playlist.tracks();
 /// let track = &tracks[0];
 /// assert_eq!(track.file(), "assets/tracks/MusMus-BGM-136.mp3");
-/// assert_eq!(track.start_position(), "00:02:20");
+/// let result = track.start_position();
+/// assert!(result.is_ok());
+/// assert_eq!(result.unwrap(), Duration::from_secs(140));
 /// assert_eq!(track.rank(), 1);
 /// assert_eq!(track.playback_duration(), "00:00:10");
+///
 /// let track = &tracks[1];
 /// assert_eq!(track.file(), "assets/tracks/MusMus-BGM-162.mp3");
-/// assert_eq!(track.start_position(), "00:02:30");
+/// let result = track.start_position();
+/// assert!(result.is_ok());
+/// assert_eq!(result.unwrap(), Duration::from_secs(150));
 /// assert_eq!(track.rank(), 2);
 /// assert_eq!(track.playback_duration(), "00:00:20");
 ///

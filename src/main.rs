@@ -85,14 +85,7 @@ fn play(playlist_file: String) -> Result<(), Box<dyn std::error::Error>> {
                 sink.set_volume(playlist.volume() as f32);
 
                 let mut decoder = rodio::Decoder::new(BufReader::new(f)).unwrap();
-
-                let start_position = track.start_position();
-                let start_position = if start_position == "" {
-                    Duration::from_secs(0)
-                } else {
-                    Duration::from_secs(time_string_to_seconds(start_position)?)
-                };
-                decoder.try_seek(start_position)?;
+                decoder.try_seek(track.start_position()?)?;
 
                 let playback_duration = track.playback_duration();
                 let playback_duration = if playback_duration == "" {
