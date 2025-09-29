@@ -78,8 +78,16 @@ fn play(playlist_file: String) -> Result<(), Box<dyn std::error::Error>> {
     }
 
     for track in playlist.tracks() {
-        match File::open(track.path(playlist.base_path())) {
-            Ok(f) => {
+        let track_file = track.path(playlist.base_path());
+
+        let _ = File::open(&track_file)
+            .map_err(|e| {
+                let error_message =
+                    format!("Failed to open track file: track_file -> {track_file:?}, e -> {e:?}");
+                println!("{error_message:?}");
+                error_message
+            })
+            .map(|f| {
                 let sink = rodio::Sink::try_new(&stream_handle).unwrap();
                 sink.set_volume(playlist.volume() as f32);
 
@@ -102,12 +110,9 @@ fn play(playlist_file: String) -> Result<(), Box<dyn std::error::Error>> {
                 }
 
                 sinks.push(sink);
-            }
-            Err(error) => {
-                println!("error -> {error:?}");
-                panic!("{}", error.to_string());
-            }
-        }
+
+                Ok::<(), Box<dyn std::error::Error>>(())
+            });
     }
 
     //todo 最長のトラックの再生が完了するのを待つように修正
