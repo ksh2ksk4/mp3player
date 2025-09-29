@@ -7,7 +7,6 @@ use mp3player::get_playlist;
 use rodio::Source;
 use std::fs::File;
 use std::io::BufReader;
-use std::path::Path;
 use std::time::Duration;
 
 #[derive(Debug, Parser)]
@@ -79,7 +78,7 @@ fn play(playlist_file: String) -> Result<(), Box<dyn std::error::Error>> {
     }
 
     for track in playlist.tracks() {
-        match File::open(Path::new(playlist.base_path()).join(track.file())) {
+        match File::open(track.path(playlist.base_path())) {
             Ok(f) => {
                 let sink = rodio::Sink::try_new(&stream_handle).unwrap();
                 sink.set_volume(playlist.volume() as f32);

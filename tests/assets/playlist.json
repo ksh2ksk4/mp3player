@@ -1,14 +1,14 @@
 {
-  "base_path": "/foo",
+  "base_path": "/tests/assets/tracks",
   "tracks": [
     {
-      "file": "assets/tracks/MusMus-BGM-136.mp3",
+      "file": "MusMus-BGM-136.mp3",
       "start_position": "00:02:20",
       "rank": 1,
       "playback_duration": "00:00:10"
     },
     {
-      "file": "assets/tracks/MusMus-BGM-162.mp3",
+      "file": "MusMus-BGM-162.mp3",
       "start_position": "00:02:30",
       "rank": 2,
       "playback_duration": "00:00:20"
