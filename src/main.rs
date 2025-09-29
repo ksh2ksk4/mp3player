@@ -77,13 +77,16 @@ fn play(playlist_file: String) -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    for track in playlist.tracks() {
+    let mut longest_playback_duration = Duration::from_secs(0);
+    let mut longest_track_index = 0;
+
+    for (i, track) in playlist.tracks().iter().enumerate() {
         let track_file = track.path(playlist.base_path());
 
         let _ = File::open(&track_file)
             .map_err(|e| {
                 let error_message =
-                    format!("Failed to open track file: track_file -> {track_file:?}, e -> {e:?}");
+                    format!("Failed to open track file: index -> {i:?}, track_file -> {track_file:?}, e -> {e:?}");
                 println!("{error_message:?}");
                 error_message
             })
@@ -99,6 +102,11 @@ fn play(playlist_file: String) -> Result<(), Box<dyn std::error::Error>> {
                 if playback_duration.is_zero() {
                     // note 0.18.0 から値が取得できるようになっている
                     playback_duration = decoder.total_duration().unwrap_or(Duration::from_secs(0));
+                } else {
+                    if longest_playback_duration < playback_duration {
+                        longest_playback_duration = playback_duration;
+                        longest_track_index = i;
+                    }
                 }
 
                 let tmp = decoder.take_duration(playback_duration);
@@ -115,9 +123,8 @@ fn play(playlist_file: String) -> Result<(), Box<dyn std::error::Error>> {
             });
     }
 
-    //todo 最長のトラックの再生が完了するのを待つように修正
-    // 最初のトラックの再生が完了するまで待つ
-    sinks[0].sleep_until_end();
+    // 再生時間が最長のトラックの再生が完了するまで待つ
+    sinks[longest_track_index].sleep_until_end();
 
     Ok(())
 }
