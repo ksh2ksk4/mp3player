@@ -60,7 +60,7 @@ fn main() {
 /// - `Ok(())`: ()
 /// - `Err(Box<dyn std::error::Error>)`: エラーメッセージ
 fn play(playlist_file: String) -> Result<(), Box<dyn std::error::Error>> {
-    let (_stream, stream_handle) = rodio::OutputStream::try_default().unwrap();
+    let (_stream, stream_handle) = rodio::OutputStream::try_default()?;
     let mut sinks = vec![];
 
     println!("playlist_file -> {playlist_file:?}");
@@ -88,10 +88,10 @@ fn play(playlist_file: String) -> Result<(), Box<dyn std::error::Error>> {
                 error_message
             })
             .map(|f| {
-                let sink = rodio::Sink::try_new(&stream_handle).unwrap();
+                let sink = rodio::Sink::try_new(&stream_handle)?;
                 sink.set_volume(playlist.volume() as f32);
 
-                let mut decoder = rodio::Decoder::new(BufReader::new(f)).unwrap();
+                let mut decoder = rodio::Decoder::new(BufReader::new(f))?;
                 decoder.try_seek(track.start_position()?)?;
 
                 let mut playback_duration = track.playback_duration()?;
