@@ -71,18 +71,13 @@ fn play(playlist_file: String) -> Result<(), Box<dyn std::error::Error>> {
 
     let (_stream, stream_handle) = rodio::OutputStream::try_default()?;
     let mut sinks = vec![];
-    let playlist;
-
-    match get_playlist(playlist_file) {
-        Ok(json) => {
+    let playlist = get_playlist(playlist_file)
+        .inspect_err(|e| {
+            _error(format!("Failed to get playlist: e -> {e:?}"), line!());
+        })
+        .inspect(|json| {
             _info(format!("json -> {json:?}"), line!());
-            playlist = json;
-        }
-        Err(e) => {
-            panic!("e -> {e:?}");
-        }
-    }
-
+        })?;
     let mut longest_playback_duration = Duration::from_secs(0);
     let mut longest_track_index = 0;
 
