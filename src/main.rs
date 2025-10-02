@@ -3,6 +3,7 @@
 //! mp3ファイルを再生するアプリ。
 
 use clap::{Parser, Subcommand};
+use log::{error, info};
 use mp3player::get_playlist;
 use rodio::Source;
 use std::fs::File;
@@ -33,18 +34,24 @@ enum SubCommands {
 ///
 /// エントリポイント
 fn main() {
+    env_logger::init();
+
+    _info("Begin", line!());
+
     let args = Cli::parse();
-    println!("args -> {args:?}");
+    _info(format!("args -> {args:?}"), line!());
 
     match args.sub_command {
         SubCommands::Play { playlist_file } => {
             let result = play(playlist_file);
-            println!("result -> {result:?}");
+            _info(format!("result -> {result:?}"), line!());
         }
         SubCommands::Stop {} => {
-            println!("stop");
+            _info("stop", line!());
         }
     }
+
+    _info("End", line!());
 }
 
 /// # Summary
@@ -60,16 +67,15 @@ fn main() {
 /// - `Ok(())`: ()
 /// - `Err(Box<dyn std::error::Error>)`: エラーメッセージ
 fn play(playlist_file: String) -> Result<(), Box<dyn std::error::Error>> {
+    _info(format!("playlist_file -> {playlist_file:?}"), line!());
+
     let (_stream, stream_handle) = rodio::OutputStream::try_default()?;
     let mut sinks = vec![];
-
-    println!("playlist_file -> {playlist_file:?}");
-
     let playlist;
 
     match get_playlist(playlist_file) {
         Ok(json) => {
-            println!("json -> {json:?}");
+            _info(format!("json -> {json:?}"), line!());
             playlist = json;
         }
         Err(e) => {
@@ -87,7 +93,7 @@ fn play(playlist_file: String) -> Result<(), Box<dyn std::error::Error>> {
             .map_err(|e| {
                 let error_message =
                     format!("Failed to open track file: index -> {i:?}, track_file -> {track_file:?}, e -> {e:?}");
-                println!("{error_message:?}");
+                _error(format!("{error_message}"), line!());
                 error_message
             })
             .map(|f| {
@@ -127,4 +133,12 @@ fn play(playlist_file: String) -> Result<(), Box<dyn std::error::Error>> {
     sinks[longest_track_index].sleep_until_end();
 
     Ok(())
+}
+
+fn _error<S: AsRef<str>>(message: S, line: u32) {
+    error!("{}:{line} - {}", file!(), message.as_ref());
+}
+
+fn _info<S: AsRef<str>>(message: S, line: u32) {
+    info!("{}:{line} - {}", file!(), message.as_ref());
 }
