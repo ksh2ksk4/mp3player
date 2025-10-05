@@ -80,8 +80,20 @@ fn play(playlist_file: String) -> Result<(), Box<dyn std::error::Error>> {
         })?;
     let mut longest_playback_duration = Duration::from_secs(0);
     let mut longest_track_index = 0;
+    let simultaneous_playback = playlist.simultaneous_playback();
+    let tracks;
 
-    for (i, track) in playlist.tracks().iter().enumerate() {
+    if simultaneous_playback.number_of_tracks() == 0 {
+        //implement シリアル再生機能
+        //tracks = playlist.tracks();
+        return Ok(());
+    } else {
+        tracks = playlist.target_tracks();
+    }
+
+    _info(format!("tracks -> {tracks:?}"), line!());
+
+    for (i, track) in tracks.iter().enumerate() {
         let track_file = track.path(playlist.base_path());
 
         let _ = File::open(&track_file)

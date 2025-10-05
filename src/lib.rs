@@ -1,4 +1,6 @@
 use chrono::{NaiveTime, Timelike};
+use rand::prelude::IndexedRandom;
+use rand::rng;
 use serde::{Deserialize, Serialize};
 use serde_json;
 use std::fs::File;
@@ -13,14 +15,16 @@ use std::time::Duration;
 /// # Fields
 ///
 /// - `base_path`: 再生対象ファイルのベースパス
-/// - `tracks`: 再生対象トラックのリスト
 /// - `repeat`: リピート再生するかどうか
+/// - `simultaneous_playback`: 同時再生設定
+/// - `tracks`: 再生対象トラックのリスト
 /// - `volume`: ボリューム(1 を 100% とした数値)
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Playlist {
     base_path: String,
-    tracks: Vec<Track>,
     repeat: bool,
+    simultaneous_playback: SimultaneousPlayback,
+    tracks: Vec<Track>,
     volume: f64,
 }
 
@@ -29,12 +33,27 @@ impl Playlist {
         &self.base_path
     }
 
-    pub fn tracks(&self) -> &Vec<Track> {
-        &self.tracks
-    }
-
     pub fn repeat(&self) -> bool {
         self.repeat
+    }
+
+    pub fn simultaneous_playback(&self) -> &SimultaneousPlayback {
+        &self.simultaneous_playback
+    }
+
+    pub fn target_tracks(&self) -> Vec<Track> {
+        let number_of_tracks = self.simultaneous_playback.number_of_tracks;
+        //let rank = self.simultaneous_playback.rank;
+        let mut rng = rng();
+
+        self.tracks
+            .choose_multiple(&mut rng, number_of_tracks.try_into().unwrap())
+            .cloned()
+            .collect()
+    }
+
+    pub fn tracks(&self) -> &Vec<Track> {
+        &self.tracks
     }
 
     pub fn volume(&self) -> f64 {
@@ -44,7 +63,31 @@ impl Playlist {
 
 /// # Summary
 ///
-/// トラックリスト
+/// 同時再生設定
+///
+/// # Fields
+///
+/// - `number_of_tracks`: 同時再生するトラックの数
+/// - `rank`: 同時再生対象のランク
+#[derive(Debug, Deserialize, Serialize)]
+pub struct SimultaneousPlayback {
+    number_of_tracks: u64,
+    rank: u64,
+}
+
+impl SimultaneousPlayback {
+    pub fn number_of_tracks(&self) -> u64 {
+        self.number_of_tracks
+    }
+
+    pub fn rank(&self) -> u64 {
+        self.rank
+    }
+}
+
+/// # Summary
+///
+/// トラック
 ///
 /// # Fields
 ///
@@ -52,7 +95,7 @@ impl Playlist {
 /// - `start_position`: 開始位置(時刻文字列)
 /// - `rank`: ランク
 /// - `playback_duration`: 再生時間(時刻文字列)
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Track {
     file: String,
     start_position: String,
