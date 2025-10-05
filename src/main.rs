@@ -4,7 +4,7 @@
 
 use clap::{Parser, Subcommand};
 use log::{error, info};
-use mp3player::get_playlist;
+use mp3player::{get_playlist, Playlist};
 use rodio::Source;
 use std::fs::File;
 use std::io::BufReader;
@@ -56,7 +56,7 @@ fn main() {
 
 /// # Summary
 ///
-/// プレイリストに含まれるトラックを再生する
+/// プレイリストを取得して再生する
 ///
 /// # Arguments
 ///
@@ -69,8 +69,6 @@ fn main() {
 fn play(playlist_file: String) -> Result<(), Box<dyn std::error::Error>> {
     _info(format!("playlist_file -> {playlist_file:?}"), line!());
 
-    let (_stream, stream_handle) = rodio::OutputStream::try_default()?;
-    let mut sinks = vec![];
     let playlist = get_playlist(playlist_file)
         .inspect_err(|e| {
             _error(format!("Failed to get playlist: e -> {e:?}"), line!());
@@ -78,24 +76,37 @@ fn play(playlist_file: String) -> Result<(), Box<dyn std::error::Error>> {
         .inspect(|json| {
             _info(format!("json -> {json:?}"), line!());
         })?;
+
+    if let Some(_v) = playlist.simultaneous_playback() {
+        simultaneous_playback(playlist)
+    } else {
+        //implement シリアル再生機能
+        Ok(())
+    }
+}
+
+/// # Summary
+///
+/// プレイリストを元に同時再生する
+///
+/// # Arguments
+///
+/// - `playlist`: プレイリスト
+///
+/// # Returns
+///
+/// - `Ok(())`: ()
+/// - `Err(Box<dyn std::error::Error>)`: エラーメッセージ
+fn simultaneous_playback(playlist: Playlist) -> Result<(), Box<dyn std::error::Error>> {
+    let (_stream, stream_handle) = rodio::OutputStream::try_default()?;
+    let mut sinks = vec![];
     let mut longest_playback_duration = Duration::from_secs(0);
     let mut longest_track_index = 0;
-    let simultaneous_playback = playlist.simultaneous_playback();
-    let tracks;
 
-    if simultaneous_playback.number_of_tracks() == 0 {
-        //implement シリアル再生機能
-        //tracks = playlist.tracks();
-        return Ok(());
-    } else {
-        tracks = playlist.target_tracks();
-    }
+    for (i, track) in playlist.target_tracks().iter().enumerate() {
+        _info(format!("track -> {track:?}"), line!());
 
-    _info(format!("tracks -> {tracks:?}"), line!());
-
-    for (i, track) in tracks.iter().enumerate() {
         let track_file = track.path(playlist.base_path());
-
         let _ = File::open(&track_file)
             .map_err(|e| {
                 let error_message =

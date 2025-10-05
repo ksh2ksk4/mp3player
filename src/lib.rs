@@ -23,7 +23,7 @@ use std::time::Duration;
 pub struct Playlist {
     base_path: String,
     repeat: bool,
-    simultaneous_playback: SimultaneousPlayback,
+    simultaneous_playback: Option<SimultaneousPlayback>,
     tracks: Vec<Track>,
     volume: f64,
 }
@@ -37,19 +37,25 @@ impl Playlist {
         self.repeat
     }
 
-    pub fn simultaneous_playback(&self) -> &SimultaneousPlayback {
+    pub fn simultaneous_playback(&self) -> &Option<SimultaneousPlayback> {
         &self.simultaneous_playback
     }
 
     pub fn target_tracks(&self) -> Vec<Track> {
-        let number_of_tracks = self.simultaneous_playback.number_of_tracks;
-        //let rank = self.simultaneous_playback.rank;
-        let mut rng = rng();
+        if let Some(v) = self.simultaneous_playback() {
+            //v.rank();
+            let mut rng = rng();
 
-        self.tracks
-            .choose_multiple(&mut rng, number_of_tracks.try_into().unwrap())
-            .cloned()
-            .collect()
+            self.tracks
+                .choose_multiple(
+                    &mut rng,
+                    v.number_of_tracks().try_into().unwrap_or_default(),
+                )
+                .cloned()
+                .collect()
+        } else {
+            self.tracks.clone()
+        }
     }
 
     pub fn tracks(&self) -> &Vec<Track> {
