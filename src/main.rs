@@ -125,7 +125,7 @@ fn simultaneous_playback(playlist: Playlist) -> Result<(), Box<dyn std::error::E
 
                 if playback_duration.is_zero() {
                     // note 0.18.0 から値が取得できるようになっている
-                    playback_duration = decoder.total_duration().unwrap_or(Duration::from_secs(0));
+                    playback_duration = decoder.total_duration().unwrap_or_default();
                 } else {
                     if longest_playback_duration < playback_duration {
                         longest_playback_duration = playback_duration;
